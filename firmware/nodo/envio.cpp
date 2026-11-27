@@ -5,6 +5,7 @@
 #include <WiFiClient.h>
 #include <WiFiClientSecure.h>
 
+#include "ca_letsencrypt.h"  // CA_LETS_ENCRYPT, para usar en API_CA_CERT
 #include "config.h"
 #include "hora.h"
 

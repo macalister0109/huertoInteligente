@@ -19,7 +19,7 @@
 | Calibración de la sonda en agua | ⏳ Pendiente (`SUELO_MV_MOJADO = -1`) |
 | Red (firewall y perfil privado) | ⏳ Pendiente: lo hace la usuaria como administradora |
 | Prueba con la placa real y corte de WiFi | ⏳ Pendiente |
-| Servidor en internet (HTTPS) | ⏳ Más adelante (ver README, sección 7) |
+| Servidor mjvirtual (`huerto.mjvirtual.cl`) | 🟡 Repo listo; falta el DNS y ejecutar la guía [DESPLIEGUE_MJVIRTUAL.md](DESPLIEGUE_MJVIRTUAL.md) |
 
 ## Servicios en Docker (`central/docker-compose.yml`)
 
@@ -92,6 +92,26 @@ docker compose --profile test stop mariadb_test   # apagar la BD de tests
 7. Configurar el cultivo o el rango de la Cama A en el tablero.
 8. Hacer commit de los cambios.
 9. Más adelante: servidor con HTTPS y `API_CA_CERT` (README, sección 7).
+
+## Servidor mjvirtual (preparado el 27-11-2026)
+
+- **Ya está en el repo:**
+  - el `.env` del servidor se genera con `python3 despliegue/crear_env.py --servidor`;
+  - todos los puertos quedan solo en `127.0.0.1` (web 18020, MariaDB 13306, MQTT 11883);
+  - la web confía en el `X-Forwarded-For` de nginx (`PROXY_SALTOS=1`) y la cookie de sesión es
+    segura;
+  - la configuración de nginx con soporte para SSE está en `central/despliegue/`;
+  - `firmware/nodo/ca_letsencrypt.h` trae ISRG Root X1 y X2.
+- **Verificado:**
+  - con la configuración del servidor, el compose publica solo en `127.0.0.1`;
+  - el firmware con `https://huerto.mjvirtual.cl` + `CA_LETS_ENCRYPT` compila;
+  - la cadena TLS de `asistente.mjvirtual.cl` valida con solo esos dos certificados raíz;
+  - pasan 166 tests.
+- **Falta:**
+  1. el registro DNS `A huerto → 216.185.51.164` (hoy no existe);
+  2. commit + push;
+  3. los pasos 1.1 a 1.6 de la guía en el VPS;
+  4. el token del servidor en `config.h`.
 
 ## Observaciones
 

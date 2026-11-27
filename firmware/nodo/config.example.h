@@ -15,15 +15,17 @@
 // API del equipo central
 // ---------------------------------------------------------------------------
 // En la casa: la IP de tu PC (mírala con "ipconfig") y el puerto 8080.
-// En tu servidor: https://tu-dominio/api/lecturas
+// En el servidor: "https://huerto.mjvirtual.cl/api/lecturas"
 #define API_URL "http://192.168.1.50:8080/api/lecturas"
 
 // Token del nodo. Se genera con:  python -m web.nodos crear cama-a
 #define API_TOKEN "pega_aqui_el_token"
 
-// Solo para https: certificado raíz (CA) del servidor, en formato PEM.
-// Con nullptr la conexión va cifrada pero SIN verificar el servidor
-// (sirve para probar, no para dejarlo así). Ver README.
+// Solo para https: certificado raíz (CA) con que el ESP32 verifica al servidor.
+//   - Servidor mjvirtual (certbot / Let's Encrypt):  CA_LETS_ENCRYPT  (ca_letsencrypt.h)
+//   - En la casa por http: no se usa (déjalo en nullptr).
+// Con nullptr y https la conexión va cifrada pero SIN verificar el servidor
+// (sirve para probar, no para dejarlo así).
 #define API_CA_CERT nullptr
 
 // Identificador de la cama que mide este nodo (igual que en web.nodos)

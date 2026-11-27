@@ -253,27 +253,23 @@ SELECT COUNT(*) AS lecturas, COUNT(DISTINCT seq) AS distintas, MIN(seq), MAX(seq
 
 ---
 
-## 7. Llevarlo a un servidor en internet
+## 7. Llevarlo a un servidor en internet (mjvirtual)
 
-La API funciona igual en un servidor. Pon el equipo central detrás de un proxy con **HTTPS** (Caddy
-o nginx con Let's Encrypt). Por HTTP el token viaja sin cifrar, y eso solo es aceptable dentro de
-la red de la casa.
+La guía completa está en [docs/DESPLIEGUE_MJVIRTUAL.md](docs/DESPLIEGUE_MJVIRTUAL.md): DNS, `.env`
+del servidor, nginx + certbot, token y respaldos. En resumen:
 
-En `config.h`:
+- En el servidor, la app escucha solo en `127.0.0.1:18020`, y nginx la publica por **HTTPS** en
+  `https://huerto.mjvirtual.cl`. Por HTTP el token viajaría sin cifrar.
+- En `config.h`:
 
-```c
-#define API_URL "https://tu-dominio/api/lecturas"
-#define API_CA_CERT \
-  "-----BEGIN CERTIFICATE-----\n" \
-  "MIIFazCCA1OgAwIBAgIRAIIQz7DSQONZRGPgu2OCiwAwDQYJKoZIhvcNAQELBQAw\n" \
-  "...una línea así por cada línea del certificado...\n" \
-  "-----END CERTIFICATE-----\n"
-```
+  ```c
+  #define API_URL "https://huerto.mjvirtual.cl/api/lecturas"
+  #define API_TOKEN "token creado EN EL SERVIDOR"
+  #define API_CA_CERT CA_LETS_ENCRYPT      // certificados raíz de Let's Encrypt (ca_letsencrypt.h)
+  ```
 
-`API_CA_CERT` es el certificado **raíz** de quien firmó el certificado de tu servidor. Para Let's
-Encrypt es «ISRG Root X1» (https://letsencrypt.org/certs/isrgrootx1.pem). Con `nullptr` la
-conexión va cifrada pero el ESP32 no comprueba que el servidor sea el tuyo. Sirve para probar, no
-para dejarlo así.
+- Con `API_CA_CERT nullptr`, la conexión va cifrada pero el ESP32 no comprueba que el servidor sea
+  el tuyo. Sirve para probar, no para dejarlo así.
 
 ---
 

@@ -14,6 +14,7 @@ from typing import Callable, Optional
 from zoneinfo import ZoneInfo
 
 from flask import Flask, current_app, g
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from comun.config import cargar_env
 from comun.db import ahora_utc, conectar
@@ -35,9 +36,14 @@ def crear_app(cfg: Optional[ConfigWeb] = None, difusor: Optional[Difusor] = None
         SECRET_KEY=cfg.clave_sesion,
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Strict",
+        SESSION_COOKIE_SECURE=cfg.cookie_segura,
         PERMANENT_SESSION_LIFETIME=timedelta(hours=8),
     )
     app.json.ensure_ascii = False
+    if cfg.proxy_saltos > 0:
+        # nginx en el servidor: la IP y el esquema (https) reales vienen en X-Forwarded-*
+        n = cfg.proxy_saltos
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=n, x_proto=n, x_host=n)
 
     if difusor is None:
         difusor = DifusorMqtt(cfg.bd.mqtt_host, cfg.bd.mqtt_puerto,

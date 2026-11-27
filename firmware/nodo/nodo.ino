@@ -47,9 +47,9 @@ static const uint32_t ESPERA_PRIMERA_LECTURA_MS = 2500;
 // El DHT11 no admite más de una lectura por segundo: usamos 2 s como mínimo
 static const uint32_t INTERVALO_MINIMO_MS = 2000;
 static const uint32_t INTERVALO_EFECTIVO_MS =
-    INTERVALO_MS < INTERVALO_MINIMO_MS ? INTERVALO_MINIMO_MS : INTERVALO_MS;
+  INTERVALO_MS < INTERVALO_MINIMO_MS ? INTERVALO_MINIMO_MS : INTERVALO_MS;
 static const uint32_t REFRESCO_EFECTIVO_MS =
-    REFRESCO_PANTALLA_MS < INTERVALO_MINIMO_MS ? INTERVALO_MINIMO_MS : REFRESCO_PANTALLA_MS;
+  REFRESCO_PANTALLA_MS < INTERVALO_MINIMO_MS ? INTERVALO_MINIMO_MS : REFRESCO_PANTALLA_MS;
 
 // Envío: pausa entre lecturas del buffer y espera tras un fallo (crece hasta 1 min)
 static const uint32_t PAUSA_ENTRE_ENVIOS_MS = 300;
@@ -140,7 +140,7 @@ static void tomarLectura() {
     Serial.printf("[Lectura] %s\n", json);
     encolar(r);
   } else if (cantidadSinHora < MAX_SIN_HORA) {
-    sinHora[cantidadSinHora++] = {r, millis()};
+    sinHora[cantidadSinHora++] = { r, millis() };
     Serial.printf("[Lectura] seq=%lu guardada en espera: aún no hay hora de internet (NTP)\n",
                   (unsigned long)r.seq);
   } else {
@@ -202,7 +202,9 @@ static EstadoRed estadoRed() {
   return errorApi ? EstadoRed::ERROR_API : EstadoRed::WIFI_OK;
 }
 
-static uint16_t pendientesTotales() { return pendientesEnBuffer() + cantidadSinHora; }
+static uint16_t pendientesTotales() {
+  return pendientesEnBuffer() + cantidadSinHora;
+}
 
 static void actualizarIndicadores() {
   EstadoRed red = estadoRed();
@@ -210,8 +212,7 @@ static void actualizarIndicadores() {
 
   // LED: parpadeo lento = sin conexión con el equipo central,
   //      fijo = suelo fuera del rango ideal, apagado = todo bien
-  bool fueraDeRango = ultimoSuelo.pctValido &&
-                      (ultimoSuelo.pct < SUELO_MIN || ultimoSuelo.pct > SUELO_MAX);
+  bool fueraDeRango = ultimoSuelo.pctValido && (ultimoSuelo.pct < SUELO_MIN || ultimoSuelo.pct > SUELO_MAX);
   if (red != EstadoRed::WIFI_OK) ponerModoLed(ModoLed::PARPADEO_LENTO);
   else if (fueraDeRango) ponerModoLed(ModoLed::FIJO);
   else ponerModoLed(ModoLed::APAGADO);

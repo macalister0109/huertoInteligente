@@ -226,3 +226,41 @@ class TestUltima:
         enviar(seq=1, medido_en=INICIO, suelo_pct=40)
         enviar(seq=2, medido_en=INICIO + MIN, temp=99, hum_aire=140, suelo_pct=130, suelo_mv=9000)
         assert cliente.get("/api/camas/cama-a/ultima").get_json()["lectura"]["seq"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Detrás de nginx (servidor): la IP real llega en X-Forwarded-For
+# ---------------------------------------------------------------------------
+
+class TestDetrasDeProxy:
+    def _app(self, difusor, reloj, saltos: int):
+        from comun.db import conectar
+        from pruebas.bd import CFG
+        from web import crear_app
+        from web.config import ConfigWeb
+
+        cfg = ConfigWeb(bd=CFG, pin_docente="2468", clave_sesion="x", proxy_saltos=saltos,
+                        cookie_segura=bool(saltos))
+        app = crear_app(cfg, difusor=difusor, conectar_bd=lambda: conectar(CFG), reloj=reloj)
+
+        @app.get("/_ip")
+        def _ip():
+            from flask import request
+            return {"ip": request.remote_addr, "https": request.scheme == "https"}
+        return app
+
+    def test_con_proxy_usa_la_ip_del_visitante(self, bd, difusor, reloj):
+        cliente = self._app(difusor, reloj, saltos=1).test_client()
+        r = cliente.get("/_ip", headers={"X-Forwarded-For": "200.1.2.3",
+                                         "X-Forwarded-Proto": "https"}).get_json()
+        assert r == {"ip": "200.1.2.3", "https": True}
+
+    def test_sin_proxy_no_se_cree_la_cabecera(self, bd, difusor, reloj):
+        """En la casa nadie puede hacerse pasar por otra IP para saltarse el bloqueo del PIN."""
+        cliente = self._app(difusor, reloj, saltos=0).test_client()
+        r = cliente.get("/_ip", headers={"X-Forwarded-For": "200.1.2.3"}).get_json()
+        assert r["ip"] == "127.0.0.1" and r["https"] is False
+
+    def test_cookie_segura_en_el_servidor(self, bd, difusor, reloj):
+        app = self._app(difusor, reloj, saltos=1)
+        assert app.config["SESSION_COOKIE_SECURE"] is True

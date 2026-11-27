@@ -7,6 +7,10 @@
 #
 # Servicios: mosquitto (broker), mariadb (BD local), procesador (reglas y alertas)
 # y web (tablero en http://IP_DE_LA_PI:8080, kiosco en http://localhost:8080/?kiosco=1).
+#
+# En el servidor (detrás de nginx) se publica solo en localhost, desde el .env:
+#   WEB_ESCUCHA=127.0.0.1  WEB_PUERTO=18020  MQTT_ESCUCHA=127.0.0.1
+# Ver docs/DESPLIEGUE_MJVIRTUAL.md
 
 services:
   web:
@@ -19,7 +23,9 @@ services:
       DB_HOST: mariadb
       MQTT_HOST: mosquitto
     ports:
-      - "${WEB_PUERTO:-8080}:8080"
+      # En la casa: 0.0.0.0 (los ESP32 de la red local llegan directo).
+      # En el servidor: 127.0.0.1 (solo nginx llega; afuera se entra por HTTPS).
+      - "${WEB_ESCUCHA:-0.0.0.0}:${WEB_PUERTO:-8080}:8080"
     depends_on:
       mariadb:
         condition: service_healthy
@@ -52,7 +58,9 @@ services:
     image: eclipse-mosquitto:2
     restart: unless-stopped
     ports:
-      - "1883:1883"            # los nodos ESP32 se conectan aquí
+      # Los nodos actuales envían por HTTP: MQTT solo lo usan la web y el procesador
+      # (por la red interna de Docker). En el servidor NO se expone a internet.
+      - "${MQTT_ESCUCHA:-0.0.0.0}:${MQTT_PUERTO_LOCAL:-1883}:1883"
     volumes:
       - ./mosquitto/config:/mosquitto/config
       - datos_mosquitto:/mosquitto/data

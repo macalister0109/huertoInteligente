@@ -23,6 +23,12 @@ class ConfigWeb:
     umbral_luz_lux: float = 25000.0
     max_intentos_pin: int = 5
     minutos_bloqueo_pin: int = 5
+    # Detrás de nginx en el servidor: cuántos proxys hay delante (0 = ninguno).
+    # Con 1 se confía en X-Forwarded-For/Proto que pone nginx (la IP real del
+    # visitante sirve para bloquear intentos de PIN). En la casa va en 0.
+    proxy_saltos: int = 0
+    # true cuando el tablero se sirve por HTTPS: la cookie de sesión no viaja por HTTP
+    cookie_segura: bool = False
 
     @property
     def pin_configurado(self) -> bool:
@@ -41,4 +47,7 @@ class ConfigWeb:
             clave_sesion=entorno.get("CLAVE_SESION_WEB") or secrets.token_hex(32),
             zona_horaria=bd.zona_horaria,
             umbral_luz_lux=bd.umbral_luz_lux,
+            proxy_saltos=int(entorno.get("PROXY_SALTOS") or 0),
+            cookie_segura=(entorno.get("COOKIE_SEGURA", "").strip().lower()
+                           in ("1", "true", "si", "sí", "yes", "on")),
         )
