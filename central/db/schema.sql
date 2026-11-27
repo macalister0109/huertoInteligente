@@ -92,6 +92,7 @@ CREATE TABLE IF NOT EXISTS lecturas (
     temp             DOUBLE          NULL COMMENT '°C',
     hum_aire         DOUBLE          NULL COMMENT '%',
     lux              DOUBLE          NULL,
+    suelo_mv         INT             NULL COMMENT 'mV crudos de la sonda de suelo (calibración y deriva)',
     valida           TINYINT(1)      NOT NULL DEFAULT 1,
     campos_invalidos JSON            NULL,
     motivo_invalida  VARCHAR(500)    NULL,
@@ -101,6 +102,26 @@ CREATE TABLE IF NOT EXISTS lecturas (
     KEY ix_lecturas_cama_medido (cama_id, medido_en),
     KEY ix_lecturas_sincronizado (sincronizado),
     CONSTRAINT fk_lecturas_cama FOREIGN KEY (cama_id) REFERENCES camas (id)
+        ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -------------------------------------------------------------
+-- Nodos que envían lecturas por HTTP (POST /api/lecturas).
+-- El token NUNCA se guarda: solo su hash SHA-256 (el token es aleatorio
+-- de 256 bits, así que un hash rápido es suficiente). Se crea con:
+--   python -m web.nodos crear cama-a
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS nodos (
+    nodo_id        VARCHAR(40)  NOT NULL,
+    cama_id        INT UNSIGNED NOT NULL,
+    token_hash     CHAR(64)     NOT NULL COMMENT 'SHA-256 en hexadecimal',
+    activo         TINYINT(1)   NOT NULL DEFAULT 1,
+    creado_en      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ultimo_uso_en  DATETIME     NULL,
+    PRIMARY KEY (nodo_id),
+    UNIQUE KEY uq_nodos_token (token_hash),
+    KEY ix_nodos_cama (cama_id),
+    CONSTRAINT fk_nodos_cama FOREIGN KEY (cama_id) REFERENCES camas (id)
         ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -247,3 +268,15 @@ CREATE TABLE IF NOT EXISTS incidencias (
     PRIMARY KEY (id),
     KEY ix_incidencias_pendientes (revisada, ocurrido_en)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -------------------------------------------------------------
+-- Migraciones aplicadas (python -m comun.migrar). Una BD creada con
+-- este archivo ya incluye todas las migraciones de db/migraciones/.
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS migraciones (
+    nombre       VARCHAR(100) NOT NULL,
+    aplicada_en  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (nombre)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO migraciones (nombre) VALUES ('001_api_nodos.sql');

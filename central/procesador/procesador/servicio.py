@@ -1,5 +1,8 @@
 """Orquestación: mensaje MQTT -> validación -> BD -> reglas -> estado -> publicación.
 
+Las lecturas que llegan por HTTP las guarda la web (ingreso.py) y aquí solo
+se aplican las reglas, al recibir el aviso huerto/central/lectura.
+
 Un mensaje = una transacción. Se hace commit ANTES de publicar, para que el
 tablero nunca muestre algo que no quedó guardado.
 """
@@ -22,6 +25,7 @@ from comun.config import Config
 from comun.db import ahora_utc
 from comun.rangos import rango_efectivo
 
+from . import ingreso
 from . import repositorio as repo
 from .publicador import TOPICO_ALERTAS, Publicador, iso, topico_estado, topico_tarjeta
 from .reglas import ABRIR, ACTUALIZAR, RESOLVER, Decision
@@ -31,7 +35,6 @@ from .reglas.luz import (DiaLuz, calcular_luz, evaluar_poca_luz, fecha_local, li
 from .reglas.suelo import evaluar_suelo
 from .reglas.temperatura import evaluar_temperatura, inicio_racha_sobre_maximo
 from .sincronizador import Sincronizador, SincronizadorNulo
-from .validacion import MensajeInvalido, interpretar, validar, valores_anteriores_desde_fila
 
 log = logging.getLogger(__name__)
 
@@ -40,6 +43,8 @@ TOPICO_LECTURA = re.compile(rf"^huerto/cama/{_ID}/lectura$")
 TOPICO_NODO = re.compile(rf"^huerto/nodo/{_ID}/(heartbeat|conexion)$")
 # La web avisa aquí cuando el docente cambia la configuración de una cama
 TOPICO_CONFIGURACION = "huerto/central/configuracion"
+# La web avisa aquí cuando guardó una lectura que llegó por HTTP (POST /api/lecturas)
+TOPICO_LECTURA_API = "huerto/central/lectura"
 
 SENSOR_SIN_DATOS = "sensor_sin_datos"
 DIAS_MAX_CIERRE = 30          # no recalcula más atrás que esto
@@ -98,6 +103,13 @@ class Procesador:
                 return None
             self.reevaluar_cama(cama_id)
             return None
+        if topico == TOPICO_LECTURA_API:
+            try:
+                lectura_id = int(json.loads(payload)["lectura_id"])
+            except (ValueError, KeyError, TypeError):
+                log.warning("Aviso de lectura no válido: %r", payload[:100])
+                return None
+            return self.procesar_lectura_guardada(lectura_id)
         m = TOPICO_NODO.match(topico)
         if m and m.group(2) == "heartbeat":
             self.procesar_heartbeat(m.group(1), payload)
@@ -114,29 +126,30 @@ class Procesador:
             return Resultado("invalida")
         nodo_id = m.group(1)
 
-        try:
-            datos = interpretar(nodo_id, payload)
-        except MensajeInvalido as e:
-            muestra = payload[:200] if isinstance(payload, (bytes, str)) else payload
-            repo.registrar_incidencia(self.conn, nodo_id, "mensaje_invalido",
-                                      f"{e}. Mensaje: {muestra!r}", ahora)
-            self.conn.commit()
-            log.warning("[%s] mensaje descartado: %s", nodo_id, e)
+        r = ingreso.guardar_lectura(self.conn, nodo_id, payload, ahora, self.cfg)
+        if r.estado != ingreso.GUARDADA:
+            return Resultado(r.estado, r.lectura_id)
+        return self._despues_de_guardar(r.cama, r.lectura, r.lectura_id, ahora)
+
+    def procesar_lectura_guardada(self, lectura_id: int) -> Resultado:
+        """La web ya guardó la lectura (llegó por HTTP): faltan las alertas y el estado."""
+        ahora = self.reloj()
+        fila = repo.lectura_por_id(self.conn, lectura_id)
+        cama = repo.obtener_cama(self.conn, fila["cama_id"]) if fila else None
+        if cama is None:
+            self.conn.rollback()
+            log.warning("Aviso de lectura %s: no existe en la BD", lectura_id)
             return Resultado("invalida")
-        if datos.nodo_id_mensaje and datos.nodo_id_mensaje != nodo_id:
-            log.warning("[%s] el JSON dice nodo_id=%r; se usa el del tópico",
-                        nodo_id, datos.nodo_id_mensaje)
+        lectura = SimpleNamespace(
+            seq=fila["seq"], medido_en=fila["medido_en"], valida=bool(fila["valida"]),
+            motivo=fila["motivo_invalida"],
+            suelo_prom=None if fila["suelo_prom"] is None else float(fila["suelo_prom"]),
+            temp=None if fila["temp"] is None else float(fila["temp"]))
+        return self._despues_de_guardar(cama, lectura, lectura_id, ahora)
 
-        cama = repo.obtener_o_crear_cama(self.conn, nodo_id)
-        fila_anterior = repo.lectura_anterior(self.conn, cama["id"], datos.medido_en)
-        anterior = valores_anteriores_desde_fila(fila_anterior) if fila_anterior else None
-        lectura = validar(datos, anterior, ahora, self.cfg)
-
-        try:
-            lectura_id = repo.insertar_lectura(self.conn, cama["id"], lectura, ahora)
-        except pymysql.err.IntegrityError:
-            return self._seq_repetido(cama, lectura, ahora)
-
+    def _despues_de_guardar(self, cama: dict, lectura, lectura_id: int,
+                            ahora: datetime) -> Resultado:
+        nodo_id = cama["nodo_id"]
         # HU-01: si ya existe una lectura válida medida después, esta es
         # atrasada: se guarda en el historial pero no cambia el estado actual.
         es_actual = lectura.valida and not repo.existe_valida_posterior(
@@ -163,21 +176,6 @@ class Procesador:
 
         estado = "guardada" if es_actual else ("atrasada" if lectura.valida else "invalida_guardada")
         return Resultado(estado, lectura_id, decisiones, nuevas)
-
-    def _seq_repetido(self, cama: dict, lectura, ahora: datetime) -> Resultado:
-        self.conn.rollback()
-        existente = repo.lectura_por_seq(self.conn, cama["id"], lectura.seq)
-        if existente and existente["medido_en"] == lectura.medido_en:
-            # Reenvío normal desde el buffer (se perdió el PUBACK): se ignora.
-            return Resultado("duplicada", existente["id"])
-        detalle = (f"Llegó seq={lectura.seq} medida el {iso(lectura.medido_en)}, pero ese seq ya "
-                   f"existe con hora {iso(existente['medido_en']) if existente else '?'}. "
-                   "Probablemente se borró la memoria del nodo y su contador volvió a cero: "
-                   "esas lecturas se están descartando.")
-        if repo.registrar_incidencia(self.conn, cama["nodo_id"], "seq_reiniciado", detalle, ahora):
-            log.error("[%s] %s", cama["nodo_id"], detalle)
-        self.conn.commit()
-        return Resultado("seq_reiniciado")
 
     def procesar_heartbeat(self, nodo_id: str, payload: bytes) -> None:
         try:

@@ -40,6 +40,10 @@ _VARIABLES = {
     "salto_max_temp": "SALTO_MAX_TEMP",
     "salto_max_hum_aire": "SALTO_MAX_HUM_AIRE",
     "max_adelanto_reloj_min": "MAX_ADELANTO_RELOJ_MIN",
+    "temp_min_fisico": "TEMP_MIN_FISICO",
+    "temp_max_fisico": "TEMP_MAX_FISICO",
+    "hum_aire_min_fisico": "HUM_AIRE_MIN_FISICO",
+    "hum_aire_max_fisico": "HUM_AIRE_MAX_FISICO",
     "tendencia_activa": "TENDENCIA_ACTIVA",
 }
 
@@ -75,6 +79,12 @@ class Config:
     salto_max_temp: float = 3.0             # °C por minuto
     salto_max_hum_aire: float = 15.0        # puntos por minuto
     max_adelanto_reloj_min: float = 5.0     # medido_en más adelantado que esto = hora imposible
+    # Rango físico del sensor de aire. Por defecto el DHT11 del prototipo 1:
+    # 0 a 50 °C (no mide bajo cero) y humedad 0 a 100 %.
+    temp_min_fisico: float = 0.0
+    temp_max_fisico: float = 50.0
+    hum_aire_min_fisico: float = 0.0
+    hum_aire_max_fisico: float = 100.0
     tendencia_activa: bool = False
 
     @classmethod

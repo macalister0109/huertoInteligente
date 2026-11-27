@@ -17,3 +17,7 @@ venv/
 
 # Salidas locales de las herramientas
 tools/salidas/
+
+# Firmware del nodo (Arduino)
+firmware/nodo/config.h
+firmware/nodo/build/

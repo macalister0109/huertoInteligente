@@ -13,6 +13,10 @@ RUN pip install -r requirements.txt
 
 COPY comun/ comun/
 COPY web/web/ web/
+# La API HTTP usa la misma validación que el procesador (procesador/ingreso.py)
+COPY procesador/procesador/ procesador/
+# Para aplicar migraciones dentro del contenedor (python -m comun.migrar)
+COPY db/ db/
 
 RUN useradd --system --no-create-home huerto
 USER huerto

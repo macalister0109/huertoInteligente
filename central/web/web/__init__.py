@@ -49,10 +49,12 @@ def crear_app(cfg: Optional[ConfigWeb] = None, difusor: Optional[Difusor] = None
         zona=ZoneInfo(cfg.zona_horaria),
     )
 
+    from .rutas_api import bp as bp_api
     from .rutas_config import bp as bp_config
     from .rutas_tablero import bp as bp_tablero
     app.register_blueprint(bp_tablero)
     app.register_blueprint(bp_config)
+    app.register_blueprint(bp_api)
 
     @app.teardown_appcontext
     def cerrar_bd(_error=None):

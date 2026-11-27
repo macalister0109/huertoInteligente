@@ -19,7 +19,7 @@ CFG = Config(
 )
 
 TABLAS = ["eventos_alerta", "alertas", "luz_diaria", "latencias_pantalla", "cambios_estado",
-          "lecturas", "camas", "cultivos", "heartbeats", "conexiones_nodo", "incidencias"]
+          "lecturas", "nodos", "camas", "cultivos", "heartbeats", "conexiones_nodo", "incidencias"]
 
 # 26-11-2026 15:00 UTC = 12:00 en Chile (horario de verano, UTC-3)
 INICIO = datetime(2026, 11, 26, 15, 0, 0)

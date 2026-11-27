@@ -91,11 +91,11 @@ def insertar_lectura(conn, cama_id: int, lv: LecturaValidada, recibido_en: datet
         cur.execute(
             """INSERT INTO lecturas
                    (cama_id, seq, medido_en, recibido_en, suelo_prom, suelo_detalle,
-                    temp, hum_aire, lux, valida, campos_invalidos, motivo_invalida)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                    temp, hum_aire, lux, suelo_mv, valida, campos_invalidos, motivo_invalida)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
             (cama_id, lv.seq, lv.medido_en, recibido_en, lv.suelo_prom,
              None if lv.suelo_detalle is None else json.dumps(lv.suelo_detalle),
-             lv.temp, lv.hum_aire, lv.lux, int(lv.valida),
+             lv.temp, lv.hum_aire, lv.lux, lv.suelo_mv, int(lv.valida),
              json.dumps(lv.invalidos) if lv.invalidos else None, lv.motivo),
         )
         return cur.lastrowid
@@ -105,6 +105,14 @@ def lectura_por_seq(conn, cama_id: int, seq: int) -> Optional[dict]:
     with conn.cursor() as cur:
         cur.execute("SELECT id, medido_en FROM lecturas WHERE cama_id = %s AND seq = %s",
                     (cama_id, seq))
+        return cur.fetchone()
+
+
+def lectura_por_id(conn, lectura_id: int) -> Optional[dict]:
+    """Lo que necesitan las reglas de una lectura ya guardada (llegó por la API)."""
+    with conn.cursor() as cur:
+        cur.execute("""SELECT id, cama_id, seq, medido_en, valida, suelo_prom, temp, motivo_invalida
+                         FROM lecturas WHERE id = %s""", (lectura_id,))
         return cur.fetchone()
 
 
@@ -139,7 +147,7 @@ def lectura_actual(conn, cama_id: int) -> Optional[dict]:
     with conn.cursor() as cur:
         cur.execute(
             """SELECT id, seq, medido_en, recibido_en, suelo_prom, suelo_detalle,
-                      temp, hum_aire, lux, campos_invalidos
+                      temp, hum_aire, lux, suelo_mv, campos_invalidos
                  FROM lecturas
                 WHERE cama_id = %s AND valida = 1
                 ORDER BY medido_en DESC, id DESC LIMIT 1""",

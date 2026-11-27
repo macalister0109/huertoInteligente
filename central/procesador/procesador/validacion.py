@@ -3,8 +3,10 @@
 Lógica pura (sin BD ni MQTT) para poder testearla aislada.
 
 Reglas:
-* Rango físico: suelo 0–100 %, temperatura -40 a 80 °C, humedad del aire
-  0–100 %, luz 0 a 120 000 lux. Un valor fuera de rango se descarta.
+* Rango físico: suelo 0–100 %, temperatura y humedad del aire según el
+  sensor (Config; por defecto DHT11: 0 a 50 °C y 0–100 %), luz 0 a
+  120 000 lux y mV crudos del suelo 0 a 3 600. Un valor fuera de rango
+  se descarta (la lectura se guarda igual, marcando el campo inválido).
 * Saltos imposibles respecto de la lectura ANTERIOR EN EL TIEMPO (válida
   o no, para que un cambio real solo invalide una lectura y la cama no
   quede "pegada"):
@@ -27,12 +29,20 @@ from typing import Any, Optional
 
 from comun.config import Config
 
+# Rangos fijos (no dependen del sensor de aire instalado)
 RANGOS_FISICOS = {
     "suelo": (0.0, 100.0),
-    "temp": (-40.0, 80.0),
-    "hum_aire": (0.0, 100.0),
     "lux": (0.0, 120000.0),
+    "suelo_mv": (0.0, 3600.0),   # el ADC del ESP32 a 3,3 V no pasa de ~3 300 mV
 }
+
+
+def rangos_fisicos(cfg: Config) -> dict[str, tuple[float, float]]:
+    return {
+        **RANGOS_FISICOS,
+        "temp": (cfg.temp_min_fisico, cfg.temp_max_fisico),
+        "hum_aire": (cfg.hum_aire_min_fisico, cfg.hum_aire_max_fisico),
+    }
 
 # Más allá de este tiempo entre lecturas no tiene sentido comparar saltos
 MAX_MINUTOS_COMPARACION = 30.0
@@ -54,6 +64,7 @@ class DatosLectura:
     hum_aire: Any
     lux: Any
     nodo_id_mensaje: Optional[str] = None
+    suelo_mv: Any = None           # mV crudos de la sonda (para calibrar y ver deriva)
 
 
 @dataclass
@@ -75,6 +86,7 @@ class LecturaValidada:
     temp: Optional[float]
     hum_aire: Optional[float]
     lux: Optional[float]
+    suelo_mv: Optional[int] = None
     valida: bool = True
     invalidos: dict = field(default_factory=dict)
     motivo: Optional[str] = None
@@ -114,8 +126,10 @@ def interpretar(nodo_id: str, payload: bytes | str) -> DatosLectura:
         raise MensajeInvalido(f"seq inválido: {seq!r}")
 
     suelo = datos.get("suelo")
-    if suelo is None and datos.get("suelo_prom") is not None:
-        suelo = [datos.get("suelo_prom")]       # nodo con una sola sonda
+    # Nodo con una sola sonda: "suelo_pct" (prototipo 1) o "suelo_prom"
+    for clave in ("suelo_pct", "suelo_prom"):
+        if suelo is None and datos.get(clave) is not None:
+            suelo = [datos.get(clave)]
     if suelo is not None and not isinstance(suelo, list):
         suelo = [suelo]
 
@@ -126,8 +140,9 @@ def interpretar(nodo_id: str, payload: bytes | str) -> DatosLectura:
         suelo=suelo,
         temp=datos.get("temp"),
         hum_aire=datos.get("hum_aire"),
-        lux=datos.get("lux"),
+        lux=datos.get("lux", datos.get("luz")),
         nodo_id_mensaje=datos.get("nodo_id"),
+        suelo_mv=datos.get("suelo_mv"),
     )
 
 
@@ -159,13 +174,15 @@ def validar(datos: DatosLectura, anterior: Optional[ValoresAnteriores],
         invalidos[campo] = {"valor": valor, "tipo": tipo, "detalle": detalle}
         detalles.append(detalle)
 
+    rangos = rangos_fisicos(cfg)
+
     def en_rango(campo: str, valor: Any, etiqueta: str) -> Optional[float]:
         if valor is None:
             return None
         if not _es_numero(valor):
             descartar(etiqueta, valor, "tipo_dato", f"{etiqueta} no es un número ({_fmt(valor)})")
             return None
-        minimo, maximo = RANGOS_FISICOS[campo]
+        minimo, maximo = rangos[campo]
         if not minimo <= valor <= maximo:
             descartar(etiqueta, valor, "rango", f"{etiqueta} fuera de rango físico ({_fmt(valor)})")
             return None
@@ -182,6 +199,7 @@ def validar(datos: DatosLectura, anterior: Optional[ValoresAnteriores],
     temp = en_rango("temp", datos.temp, "temp")
     hum_aire = en_rango("hum_aire", datos.hum_aire, "hum_aire")
     lux = en_rango("lux", datos.lux, "lux")
+    suelo_mv = en_rango("suelo_mv", datos.suelo_mv, "suelo_mv")
 
     # --- Saltos imposibles respecto de la lectura anterior en el tiempo ---
     if anterior is not None:
@@ -211,6 +229,7 @@ def validar(datos: DatosLectura, anterior: Optional[ValoresAnteriores],
         nodo_id=datos.nodo_id, seq=datos.seq, medido_en=datos.medido_en,
         suelo_detalle=datos.suelo, suelo_prom=suelo_prom,
         temp=temp, hum_aire=hum_aire, lux=lux, invalidos=invalidos,
+        suelo_mv=None if suelo_mv is None else int(round(suelo_mv)),
     )
 
     # --- Validez de la lectura completa ---

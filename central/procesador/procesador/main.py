@@ -32,6 +32,7 @@ SUSCRIPCIONES = [
     ("huerto/nodo/+/heartbeat", 1),
     ("huerto/nodo/+/conexion", 1),
     ("huerto/central/configuracion", 1),
+    ("huerto/central/lectura", 1),     # lecturas guardadas por la API HTTP
 ]
 INTERVALO_TICK_S = 60
 

@@ -104,7 +104,8 @@ def ultimos_estados(conn) -> dict[int, dict]:
 
 def lectura_actual(conn, cama_id: int) -> Optional[dict]:
     fila = _fila(conn, """
-        SELECT seq, medido_en, suelo_prom, suelo_detalle, temp, hum_aire, lux
+        SELECT seq, medido_en, recibido_en, suelo_prom, suelo_detalle, suelo_mv,
+               temp, hum_aire, lux
           FROM lecturas WHERE cama_id = %s AND valida = 1
          ORDER BY medido_en DESC, id DESC LIMIT 1""", (cama_id,))
     if fila and isinstance(fila["suelo_detalle"], (str, bytes)):

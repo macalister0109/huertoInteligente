@@ -20,6 +20,7 @@ log = logging.getLogger(__name__)
 PREFIJO_TARJETA = "huerto/tablero/cama/"
 TOPICO_ALERTAS = "huerto/tablero/alertas"
 TOPICO_CONFIGURACION = "huerto/central/configuracion"
+TOPICO_LECTURA_API = "huerto/central/lectura"
 MAX_EVENTOS_EN_COLA = 200
 
 
@@ -89,6 +90,10 @@ class Difusor:
     def avisar_configuracion(self, cama_id: int) -> None:
         raise NotImplementedError
 
+    def avisar_lectura(self, lectura_id: int) -> None:
+        """La API guardó una lectura: el procesador evalúa alertas y estado."""
+        raise NotImplementedError
+
 
 class DifusorMqtt(Difusor):
     def __init__(self, host: str, puerto: int, usuario: str, clave: str):
@@ -124,6 +129,11 @@ class DifusorMqtt(Difusor):
     def avisar_configuracion(self, cama_id: int) -> None:
         self.cliente.publish(TOPICO_CONFIGURACION, json.dumps({"cama_id": cama_id}), qos=1)
 
+    def avisar_lectura(self, lectura_id: int) -> None:
+        # QoS 1: si el broker está caído, paho lo reintenta al reconectar.
+        # Aunque se perdiera, la lectura ya quedó guardada en la BD.
+        self.cliente.publish(TOPICO_LECTURA_API, json.dumps({"lectura_id": lectura_id}), qos=1)
+
 
 class DifusorMemoria(Difusor):
     """Para los tests: sin broker."""
@@ -132,6 +142,10 @@ class DifusorMemoria(Difusor):
         super().__init__()
         self.conectado = True
         self.avisos_configuracion: list[int] = []
+        self.avisos_lectura: list[int] = []
 
     def avisar_configuracion(self, cama_id: int) -> None:
         self.avisos_configuracion.append(cama_id)
+
+    def avisar_lectura(self, lectura_id: int) -> None:
+        self.avisos_lectura.append(lectura_id)

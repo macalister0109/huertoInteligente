@@ -14,6 +14,7 @@ topic read      huerto/nodo/#
 topic readwrite huerto/cama/+/estado
 topic readwrite huerto/tablero/#
 topic read      huerto/central/configuracion
+topic read      huerto/central/lectura
 
 # Tablero web: lee estados; solo escribe el aviso de configuración.
 user web
@@ -22,6 +23,8 @@ topic read huerto/cama/+/estado
 topic read huerto/nodo/+/conexion
 # Avisa al procesador que el docente cambió la configuración de una cama
 topic write huerto/central/configuracion
+# Avisa al procesador que guardó una lectura llegada por HTTP (POST /api/lecturas)
+topic write huerto/central/lectura
 
 # Simulador (solo pruebas): actúa como cualquier nodo.
 user simulador

@@ -125,7 +125,7 @@ class TestHU02:
 
     def test_cama_sin_cultivo_no_genera_alertas(self, huerto):
         cama = huerto.crear_cama("cama-b", "Cama B", cultivo=None)
-        huerto.enviar("cama-b", INICIO, suelo=5, temp=-5)
+        huerto.enviar("cama-b", INICIO, suelo=5, temp=1)
         assert huerto.alertas(cama) == []
         assert huerto.estado("cama-b")["mensaje"] == "Configura un cultivo para activar las alertas"
         assert huerto.estado("cama-b")["color"] == "sin_configurar"
@@ -442,3 +442,46 @@ class TestConfiguracion:
 
     def test_aviso_de_configuracion_mal_formado_se_ignora(self, proc):
         assert proc.procesar_mensaje("huerto/central/configuracion", b"basura") is None
+
+
+# ---------------------------------------------------------------------------
+# Lecturas que guardó la API HTTP: el procesador solo aplica las reglas
+# ---------------------------------------------------------------------------
+
+class TestLecturaGuardadaPorLaApi:
+    def _guardar_por_api(self, huerto, medido_en, seq, suelo, temp=20.0):
+        from procesador import ingreso
+        cuerpo = json.dumps({"nodo_id": "cama-a", "seq": seq,
+                             "medido_en": medido_en.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                             "temp": temp, "hum_aire": 60, "suelo_pct": suelo, "suelo_mv": 2000})
+        r = ingreso.guardar_lectura(huerto.bd, "cama-a", cuerpo, medido_en + timedelta(seconds=2),
+                                    huerto.proc.cfg)
+        huerto.bd.commit()
+        return r.lectura_id
+
+    def test_aviso_abre_la_alerta_de_suelo_seco(self, huerto):
+        cama = huerto.crear_cama("cama-a", "Cama A")
+        lectura_id = self._guardar_por_api(huerto, INICIO, 1, suelo=22)
+        huerto.reloj.t = INICIO + timedelta(seconds=3)
+        r = huerto.proc.procesar_mensaje("huerto/central/lectura",
+                                         json.dumps({"lectura_id": lectura_id}).encode())
+        assert r.estado == "guardada"
+        alerta, = huerto.alertas(cama, "suelo_seco")
+        assert alerta["mensaje"] == "Cama A seca: 22 % (ideal 30 % a 70 %)"
+        assert huerto.estado("cama-a")["color"] == "rojo"
+
+    def test_aviso_de_lectura_atrasada_no_cambia_el_estado(self, huerto):
+        cama = huerto.crear_cama("cama-a", "Cama A")
+        huerto.enviar("cama-a", INICIO + 10 * MIN, suelo=50)
+        lectura_id = self._guardar_por_api(huerto, INICIO, 99, suelo=22)
+        r = huerto.proc.procesar_mensaje("huerto/central/lectura",
+                                         json.dumps({"lectura_id": lectura_id}).encode())
+        assert r.estado == "atrasada"
+        assert huerto.alertas(cama) == []
+
+    def test_aviso_de_lectura_inexistente_se_ignora(self, huerto):
+        r = huerto.proc.procesar_mensaje("huerto/central/lectura", b'{"lectura_id": 12345}')
+        assert r.estado == "invalida"
+
+    def test_aviso_mal_formado_se_ignora(self, huerto):
+        assert huerto.proc.procesar_mensaje("huerto/central/lectura", b"basura") is None

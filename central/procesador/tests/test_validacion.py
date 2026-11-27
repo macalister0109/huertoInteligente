@@ -128,3 +128,63 @@ def test_valor_descartado_por_salto_se_usa_en_la_comparacion_siguiente():
     ant = valores_anteriores_desde_fila(fila)
     assert ant.temp == 35.0           # salto: se usa
     assert ant.suelo_prom is None     # rango físico: no es una medición real
+
+
+# ---------------------------------------------------------------------------
+# Prototipo 1: JSON del ESP32 con una sonda (suelo_pct + suelo_mv) y DHT11
+# ---------------------------------------------------------------------------
+
+def mensaje_esp32(**cambios) -> bytes:
+    datos = {"nodo_id": "cama-a", "seq": 15, "medido_en": "2026-11-26T12:00:00Z",
+             "temp": 23, "hum_aire": 61, "suelo_pct": 42, "suelo_mv": 2350}
+    datos.update(cambios)
+    return json.dumps(datos).encode()
+
+
+def validada_esp32(**cambios):
+    return validar(interpretar("cama-a", mensaje_esp32(**cambios)), None, T0, CFG)
+
+
+def test_json_del_esp32_es_valido():
+    lv = validada_esp32()
+    assert lv.valida and not lv.invalidos
+    assert lv.suelo_prom == 42.0 and lv.suelo_detalle == [42]
+    assert lv.suelo_mv == 2350
+    assert lv.temp == 23.0 and lv.hum_aire == 61.0 and lv.lux is None
+
+
+def test_luz_null_del_prototipo_1_no_invalida_nada():
+    lv = validada_esp32(luz=None)
+    assert lv.valida and lv.lux is None
+
+
+@pytest.mark.parametrize("temp", [-1, 51, 85])
+def test_dht11_temperatura_fuera_de_0_a_50_se_descarta(temp):
+    lv = validada_esp32(temp=temp)
+    assert lv.valida and lv.temp is None
+    assert lv.invalidos["temp"]["tipo"] == "rango"
+
+
+@pytest.mark.parametrize("temp", [0, 50])
+def test_dht11_limites_0_y_50_son_validos(temp):
+    assert validada_esp32(temp=temp).temp == float(temp)
+
+
+def test_rango_fisico_configurable_para_otro_sensor():
+    cfg = Config(temp_min_fisico=-40, temp_max_fisico=80)
+    lv = validar(interpretar("cama-a", mensaje_esp32(temp=-5)), None, T0, cfg)
+    assert lv.temp == -5.0
+
+
+@pytest.mark.parametrize("mv", [-1, 9000, "alto"])
+def test_suelo_mv_imposible_se_descarta_sin_afectar_el_porcentaje(mv):
+    lv = validada_esp32(suelo_mv=mv)
+    assert lv.suelo_mv is None and "suelo_mv" in lv.invalidos
+    assert lv.suelo_prom == 42.0 and lv.valida
+
+
+def test_solo_mv_sin_porcentaje_no_es_lectura_util():
+    """Sonda sin calibrar y DHT11 caído: no hay nada que mostrar."""
+    lv = validada_esp32(suelo_pct=None, temp=None, hum_aire=None)
+    assert not lv.valida
+    assert lv.suelo_mv == 2350      # pero los mV quedan guardados para calibrar
