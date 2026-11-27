@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Huerto Inteligente{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/huerto.css') }}">
+</head>
+<body data-zona="{{ zona_horaria }}" {% block atributos_body %}{% endblock %}>
+  <header class="barra">
+    <a class="marca" href="{{ url_for('tablero.tablero') }}">Huerto Inteligente</a>
+    <p id="estado-central" class="estado-central" role="status" hidden></p>
+    <time id="reloj" class="reloj" aria-label="Hora actual"></time>
+    {% block navegacion %}
+    <nav class="navegacion">
+      <a href="{{ url_for('config.inicio') }}">Configuración</a>
+    </nav>
+    {% endblock %}
+  </header>
+
+  <main class="{% block clase_main %}{% endblock %}">
+    {% with avisos = get_flashed_messages(with_categories=true) %}
+      {% if avisos %}
+      <ul class="avisos-formulario">
+        {% for categoria, texto in avisos %}
+        <li class="aviso-{{ categoria }}">{{ texto }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    {% endwith %}
+    {% block contenido %}{% endblock %}
+  </main>
+
+  <script src="{{ url_for('static', filename='js/comun.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

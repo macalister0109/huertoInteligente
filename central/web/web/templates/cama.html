@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block titulo %}{{ cama.nombre }} — Huerto Inteligente{% endblock %}
+{% block atributos_body %}data-cama-id="{{ cama.id }}"{% endblock %}
+{% block clase_main %}detalle{% endblock %}
+
+{% block contenido %}
+<p><a class="volver" href="{{ url_for('tablero.tablero') }}">&larr; Volver a todas las camas</a></p>
+
+<header class="detalle-titulo">
+  <h1>{{ cama.nombre }}</h1>
+  <p id="detalle-cultivo" class="detalle-cultivo">
+    {% if cama.cultivo_nombre %}Cultivo: {{ cama.cultivo_nombre }}{% else %}Sin cultivo asignado{% endif %}
+    {% if cama.zona_climatica %} · Zona: {{ cama.zona_climatica }}{% endif %}
+  </p>
+  <p class="detalle-ayuda">Últimas 24 horas. La franja verde es el rango ideal.</p>
+</header>
+
+<section class="graficos">
+  <figure class="grafico">
+    <figcaption>Humedad del suelo</figcaption>
+    <div class="lienzo"><canvas id="grafico-suelo" aria-label="Gráfico de humedad del suelo"></canvas></div>
+  </figure>
+  <figure class="grafico">
+    <figcaption>Temperatura</figcaption>
+    <div class="lienzo"><canvas id="grafico-temp" aria-label="Gráfico de temperatura"></canvas></div>
+  </figure>
+  <figure class="grafico">
+    <figcaption>Luz</figcaption>
+    <div class="lienzo"><canvas id="grafico-luz" aria-label="Gráfico de luz"></canvas></div>
+  </figure>
+</section>
+
+<section class="panel-avisos">
+  <h2>Avisos de esta cama (últimos 7 días)</h2>
+  <ul id="avisos-cama" class="lista-avisos"><li class="vacio">Cargando…</li></ul>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/chart-4.6.2.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/cama.js') }}"></script>
+{% endblock %}

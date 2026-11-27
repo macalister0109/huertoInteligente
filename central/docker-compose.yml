@@ -1,0 +1,118 @@
+# Huerto Inteligente — equipo central (Raspberry Pi arm64, también corre en PC amd64)
+#
+#   cd central
+#   cp .env.example .env               # y edita las claves
+#   ./mosquitto/usuarios.sh servicios  # crea los usuarios MQTT
+#   docker compose up -d
+#
+# Servicios: mosquitto (broker), mariadb (BD local), procesador (reglas y alertas)
+# y web (tablero en http://IP_DE_LA_PI:8080, kiosco en http://localhost:8080/?kiosco=1).
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: mariadb
+      MQTT_HOST: mosquitto
+    ports:
+      - "${WEB_PUERTO:-8080}:8080"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  procesador:
+    build:
+      context: .
+      dockerfile: procesador/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: mariadb
+      MQTT_HOST: mosquitto
+      TZ: America/Santiago        # solo afecta la hora de los logs
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }   # no llenar la tarjeta SD de la Pi
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    ports:
+      - "1883:1883"            # los nodos ESP32 se conectan aquí
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - datos_mosquitto:/mosquitto/data
+
+  mariadb:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}  # MariaDB no arranca si queda vacía
+      MARIADB_DATABASE: ${MARIADB_DATABASE:-huerto}
+      MARIADB_USER: ${MARIADB_USER:-huerto}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+      TZ: UTC
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+00:00
+      # Pensado para la RAM de una Raspberry Pi
+      - --innodb-buffer-pool-size=128M
+    volumes:
+      - datos_mariadb:/var/lib/mysql
+      # Se ejecutan solo la primera vez (volumen vacío), en orden alfabético
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./db/semillas.sql:/docker-entrypoint-initdb.d/02_semillas.sql:ro
+    ports:
+      # Solo accesible desde la misma Pi (herramientas de CQ y exportación)
+      - "127.0.0.1:${DB_PUERTO_LOCAL:-3306}:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+
+  # BD desechable para pytest (datos en memoria). No necesita .env.
+  #   docker compose --profile test up -d --wait mariadb_test
+  mariadb_test:
+    image: mariadb:11.4
+    profiles: ["test"]
+    environment:
+      MARIADB_ROOT_PASSWORD: test
+      MARIADB_DATABASE: huerto_test
+      MARIADB_USER: huerto
+      MARIADB_PASSWORD: test
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+00:00
+    tmpfs:
+      - /var/lib/mysql
+    volumes:
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./db/semillas.sql:/docker-entrypoint-initdb.d/02_semillas.sql:ro
+    ports:
+      - "127.0.0.1:3307:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 3s
+      timeout: 5s
+      retries: 40
+
+volumes:
+  datos_mosquitto:
+  datos_mariadb:

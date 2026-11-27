@@ -1,0 +1,31 @@
+# ACL de Mosquitto. Se evalúa por usuario; los "pattern" aplican a todos.
+#
+# Nodos ESP32: el usuario MQTT es igual a su NODO_ID (%u), así cada nodo
+# solo puede escribir en los tópicos de su propia cama.
+pattern write huerto/cama/%u/lectura
+pattern read  huerto/cama/%u/estado
+pattern write huerto/nodo/%u/conexion
+pattern write huerto/nodo/%u/heartbeat
+
+# Procesador: lee todo lo que envían los nodos y publica estados y tablero.
+user procesador
+topic read      huerto/cama/+/lectura
+topic read      huerto/nodo/#
+topic readwrite huerto/cama/+/estado
+topic readwrite huerto/tablero/#
+topic read      huerto/central/configuracion
+
+# Tablero web: lee estados; solo escribe el aviso de configuración.
+user web
+topic read huerto/tablero/#
+topic read huerto/cama/+/estado
+topic read huerto/nodo/+/conexion
+# Avisa al procesador que el docente cambió la configuración de una cama
+topic write huerto/central/configuracion
+
+# Simulador (solo pruebas): actúa como cualquier nodo.
+user simulador
+topic write huerto/cama/+/lectura
+topic read  huerto/cama/+/estado
+topic write huerto/nodo/+/conexion
+topic write huerto/nodo/+/heartbeat

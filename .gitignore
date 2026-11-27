@@ -1,0 +1,19 @@
+# Credenciales: nunca al repositorio
+.env
+firmware/include/config.h
+firmware/diagnostico/include/config.h
+central/mosquitto/config/passwd
+
+# PlatformIO
+.pio/
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# Salidas locales de las herramientas
+tools/salidas/

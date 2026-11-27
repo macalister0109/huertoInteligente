@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block atributos_body %}data-kiosco="{{ '1' if kiosco else '0' }}"{% endblock %}
+{% block clase_main %}tablero{% endblock %}
+
+{% block contenido %}
+<section id="camas" class="camas" aria-label="Camas del huerto">
+  <p class="cargando">Cargando las camas…</p>
+</section>
+
+<aside class="panel-avisos" aria-label="Avisos">
+  <h2>Avisos</h2>
+  <ul id="avisos-abiertos" class="lista-avisos">
+    <li class="vacio">Cargando…</li>
+  </ul>
+  <h3>Resueltos hoy</h3>
+  <ul id="avisos-resueltos" class="lista-avisos resueltos">
+    <li class="vacio">—</li>
+  </ul>
+</aside>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/tablero.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block titulo %}Configuración — Huerto Inteligente{% endblock %}
+{% block clase_main %}configuracion{% endblock %}
+{% block navegacion %}
+<nav class="navegacion">
+  <a href="#camas">Camas</a>
+  <a href="#cultivos">Cultivos</a>
+  <a href="#incidencias">Problemas técnicos{% if incidencias %} ({{ incidencias|length }}){% endif %}</a>
+  <form method="post" action="{{ url_for('config.salir') }}" class="en-linea">
+    <button type="submit" class="boton-secundario">Salir</button>
+  </form>
+</nav>
+{% endblock %}
+
+{% macro campo_rango(nombre, etiqueta, valor, del_cultivo, unidad) %}
+  <label>
+    <span>{{ etiqueta }} ({{ unidad }})</span>
+    <input name="{{ nombre }}" type="text" inputmode="decimal"
+           value="{{ '' if valor is none else '%g'|format(valor) }}"
+           placeholder="{{ 'Del cultivo: %g'|format(del_cultivo) if del_cultivo is not none else 'Sin valor' }}">
+  </label>
+{% endmacro %}
+
+{% block contenido %}
+<h1>Configuración del huerto</h1>
+
+<section id="camas">
+  <h2>Camas</h2>
+  <p class="ayuda">Elige el cultivo de cada cama. Si en tu zona los valores ideales son otros
+    (no es lo mismo el norte que el sur), escríbelos en «Rangos propios de esta cama».
+    Deja un casillero vacío para usar el valor del cultivo.</p>
+
+  {% for cama in camas %}
+  <form id="cama-{{ cama.id }}" method="post" action="{{ url_for('config.guardar_cama', cama_id=cama.id) }}"
+        class="ficha-config{% if not cama.activa %} inactiva{% endif %}">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <h3>{{ cama.nombre }} <small>equipo «{{ cama.nodo_id }}»</small></h3>
+    <div class="fila-campos">
+      <label><span>Nombre visible</span>
+        <input name="nombre" value="{{ cama.nombre }}" required maxlength="60"></label>
+      <label><span>Cultivo</span>
+        <select name="cultivo_id">
+          <option value="">— Sin cultivo (no hay avisos) —</option>
+          {% for cultivo in cultivos %}
+          <option value="{{ cultivo.id }}" {% if cultivo.id == cama.cultivo_id %}selected{% endif %}>{{ cultivo.nombre }}</option>
+          {% endfor %}
+        </select></label>
+      <label><span>Zona climática</span>
+        <input name="zona_climatica" value="{{ cama.zona_climatica or '' }}" maxlength="60"
+               placeholder="Ej.: Valle central"></label>
+    </div>
+    <fieldset>
+      <legend>Rangos propios de esta cama (opcional)</legend>
+      <div class="fila-campos">
+        {{ campo_rango('humedad_min', 'Humedad del suelo mínima', cama.humedad_min, cama.cultivo_humedad_min, '%') }}
+        {{ campo_rango('humedad_max', 'Humedad del suelo máxima', cama.humedad_max, cama.cultivo_humedad_max, '%') }}
+        {{ campo_rango('temp_min', 'Temperatura mínima', cama.temp_min, cama.cultivo_temp_min, '°C') }}
+        {{ campo_rango('temp_max', 'Temperatura máxima', cama.temp_max, cama.cultivo_temp_max, '°C') }}
+        {{ campo_rango('horas_luz_min', 'Horas de luz mínimas', cama.horas_luz_min, cama.cultivo_horas_luz_min, 'h') }}
+      </div>
+    </fieldset>
+    <label class="casilla"><input type="checkbox" name="activa" value="1" {% if cama.activa %}checked{% endif %}>
+      Mostrar esta cama en el tablero</label>
+    <button type="submit">Guardar {{ cama.nombre }}</button>
+  </form>
+  {% else %}
+  <p class="vacio">Todavía no hay camas. Aparecen solas cuando un equipo envía su primera medición.</p>
+  {% endfor %}
+</section>
+
+<section id="cultivos">
+  <h2>Cultivos</h2>
+  <p class="ayuda">Los valores de ejemplo están marcados «por confirmar»: revísalos con las fichas
+    de INIA / INDAP para tu zona.</p>
+  {% for cultivo in cultivos + [none] %}
+  <form method="post" class="ficha-config"
+        action="{{ url_for('config.guardar_cultivo', cultivo_id=cultivo.id) if cultivo else url_for('config.guardar_cultivo') }}">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <h3>{{ cultivo.nombre if cultivo else 'Agregar un cultivo nuevo' }}
+      {% if cultivo and cultivo.por_confirmar %}<small class="etiqueta-advertencia">por confirmar</small>{% endif %}</h3>
+    <div class="fila-campos">
+      <label><span>Nombre</span><input name="nombre" value="{{ cultivo.nombre if cultivo else '' }}" required maxlength="60"></label>
+      {{ campo_rango('humedad_min', 'Humedad del suelo mínima', cultivo.humedad_min if cultivo else none, none, '%') }}
+      {{ campo_rango('humedad_max', 'Humedad del suelo máxima', cultivo.humedad_max if cultivo else none, none, '%') }}
+      {{ campo_rango('temp_min', 'Temperatura mínima', cultivo.temp_min if cultivo else none, none, '°C') }}
+      {{ campo_rango('temp_max', 'Temperatura máxima', cultivo.temp_max if cultivo else none, none, '°C') }}
+      {{ campo_rango('horas_luz_min', 'Horas de luz mínimas', cultivo.horas_luz_min if cultivo else none, none, 'h') }}
+    </div>
+    <label class="casilla"><input type="checkbox" name="tolera_sombra" value="1"
+      {% if cultivo and cultivo.tolera_sombra %}checked{% endif %}> Crece bien con sombra (se sugiere cuando una cama recibe poca luz)</label>
+    <label class="casilla"><input type="checkbox" name="por_confirmar" value="1"
+      {% if not cultivo or cultivo.por_confirmar %}checked{% endif %}> Valores por confirmar</label>
+    <label><span>Notas</span><input name="notas" value="{{ cultivo.notas or '' if cultivo else '' }}" maxlength="255"></label>
+    <button type="submit">{{ 'Guardar ' ~ cultivo.nombre if cultivo else 'Agregar cultivo' }}</button>
+  </form>
+  {% endfor %}
+</section>
+
+<section id="incidencias">
+  <h2>Problemas técnicos</h2>
+  {% for inc in incidencias %}
+  <div class="ficha-config incidencia">
+    <p><strong>Equipo «{{ inc.nodo_id }}»</strong> · <time data-iso="{{ iso(inc.ocurrido_en) }}">{{ iso(inc.ocurrido_en) }}</time></p>
+    <p>{{ inc.detalle }}</p>
+    <form method="post" action="{{ url_for('config.revisar_incidencia', incidencia_id=inc.id) }}">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <button type="submit" class="boton-secundario">Marcar como revisado</button>
+    </form>
+  </div>
+  {% else %}
+  <p class="vacio">No hay problemas técnicos pendientes.</p>
+  {% endfor %}
+</section>
+{% endblock %}
