@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from typing import Any, Optional, Sequence
+from typing import Any, Iterator, Optional, Sequence
+
+import pymysql.cursors
 
 _SELECT_CAMA = """
     SELECT c.*, cu.nombre AS cultivo_nombre,
@@ -123,6 +125,40 @@ def serie(conn, cama_id: int, desde: datetime, hasta: datetime, segundos_balde: 
          WHERE cama_id = %s AND valida = 1 AND medido_en >= %s AND medido_en < %s
          GROUP BY 1 ORDER BY 1""",
         (segundos_balde, segundos_balde, cama_id, desde, hasta))
+
+
+def resumen_por_hora(conn, cama_id: int, desde: datetime, hasta: datetime) -> list[dict]:
+    """Suma, cuenta, mínimo y máximo por hora (UTC) de las lecturas válidas.
+    La web junta las horas en días de Chile (ver rutas_historial.resumen_diario)."""
+    return _filas(conn, """
+        SELECT FLOOR(UNIX_TIMESTAMP(medido_en) / 3600) * 3600 AS hora,
+               COUNT(*) AS lecturas,
+               SUM(suelo_prom) AS suelo_suma, COUNT(suelo_prom) AS suelo_n,
+               MIN(suelo_prom) AS suelo_min, MAX(suelo_prom) AS suelo_max,
+               SUM(temp) AS temp_suma, COUNT(temp) AS temp_n,
+               MIN(temp) AS temp_min, MAX(temp) AS temp_max,
+               SUM(hum_aire) AS hum_aire_suma, COUNT(hum_aire) AS hum_aire_n,
+               MIN(hum_aire) AS hum_aire_min, MAX(hum_aire) AS hum_aire_max
+          FROM lecturas
+         WHERE cama_id = %s AND valida = 1 AND medido_en >= %s AND medido_en < %s
+         GROUP BY 1 ORDER BY 1""", (cama_id, desde, hasta))
+
+
+def lecturas_para_csv(conn, cama_id: int, desde: datetime, hasta: datetime) -> Iterator[dict]:
+    """Todas las lecturas (válidas o no) en orden de medición.
+
+    `conn` debe ser una conexión PROPIA (no la de la petición): se sigue usando
+    mientras se envía el archivo, después de que la petición terminó.
+    Usa un cursor sin buffer: las filas se leen de a poco mientras se envía
+    el archivo, así un año de lecturas no llena la memoria del servidor.
+    """
+    with conn.cursor(pymysql.cursors.SSDictCursor) as cur:
+        cur.execute("""
+            SELECT medido_en, seq, suelo_prom, suelo_mv, temp, hum_aire, lux, valida, motivo_invalida
+              FROM lecturas
+             WHERE cama_id = %s AND medido_en >= %s AND medido_en < %s
+             ORDER BY medido_en, id""", (cama_id, desde, hasta))
+        yield from cur
 
 
 # ---------------------------------------------------------------------------

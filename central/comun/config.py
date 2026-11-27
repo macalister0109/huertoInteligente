@@ -45,6 +45,7 @@ _VARIABLES = {
     "hum_aire_min_fisico": "HUM_AIRE_MIN_FISICO",
     "hum_aire_max_fisico": "HUM_AIRE_MAX_FISICO",
     "tendencia_activa": "TENDENCIA_ACTIVA",
+    "sensores_requeridos": "SENSORES_REQUERIDOS",
 }
 
 
@@ -86,6 +87,14 @@ class Config:
     hum_aire_min_fisico: float = 0.0
     hum_aire_max_fisico: float = 100.0
     tendencia_activa: bool = False
+    # Sensores que, si pasan MINUTOS_SIN_DATOS_GRIS sin datos válidos, ponen la
+    # cama en gris (HU-05). El prototipo 1 no tiene sensor de luz: no cuenta.
+    # Cuando se agregue (prototipo 2): SENSORES_REQUERIDOS=suelo,temperatura,luz
+    sensores_requeridos: str = "suelo,temperatura"
+
+    @property
+    def lista_sensores_requeridos(self) -> tuple[str, ...]:
+        return tuple(s.strip().lower() for s in self.sensores_requeridos.split(",") if s.strip())
 
     @classmethod
     def desde_entorno(cls, entorno: Optional[Mapping[str, str]] = None) -> "Config":

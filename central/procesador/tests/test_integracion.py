@@ -333,7 +333,7 @@ class TestHU05:
         reloj.t = INICIO + 121 * MIN
         proc.tick()
         assert huerto.estado("cama-a")["mensaje"] == \
-            "Sensores de humedad del suelo, temperatura y luz sin conexión"
+            "Sensores de humedad del suelo y temperatura sin conexión"
         # CQ-06: queda registrada la última lectura válida para medir el tiempo hasta el gris
         with bd.cursor() as cur:
             cur.execute("SELECT * FROM cambios_estado WHERE estado_nuevo = 'gris'")
@@ -485,3 +485,28 @@ class TestLecturaGuardadaPorLaApi:
 
     def test_aviso_mal_formado_se_ignora(self, huerto):
         assert huerto.proc.procesar_mensaje("huerto/central/lectura", b"basura") is None
+
+
+# ---------------------------------------------------------------------------
+# Prototipo 1: sin sensor de luz, la luz no pone la cama en gris
+# ---------------------------------------------------------------------------
+
+class TestSinSensorDeLuz:
+    def test_sin_luz_por_horas_la_cama_sigue_verde(self, huerto, proc, reloj):
+        huerto.crear_cama("cama-a", "Cama A")
+        huerto.serie("cama-a", INICIO, minutos=180, cada_s=600, lux=None)
+        reloj.t = INICIO + 181 * MIN
+        proc.tick()
+        assert huerto.estado("cama-a")["color"] == "verde"
+
+    def test_con_sensor_de_luz_configurado_si_cuenta(self, bd, pub, reloj):
+        from dataclasses import replace
+
+        from procesador.servicio import Procesador
+
+        from .conftest import Huerto
+        cfg = replace(CFG, sensores_requeridos="suelo,temperatura,luz")
+        huerto = Huerto(bd, Procesador(bd, cfg, pub, reloj), pub, reloj)
+        huerto.crear_cama("cama-a", "Cama A")
+        huerto.serie("cama-a", INICIO, minutos=130, cada_s=600, lux=None)
+        assert huerto.estado("cama-a")["mensaje"] == "Sensor de luz sin conexión"

@@ -304,7 +304,8 @@ class Procesador:
         primera = repo.primera_lectura(self.conn, cama["id"])
         ultimas = (repo.ultima_valida_por_sensor(self.conn, cama["id"], ahora - timedelta(days=7))
                    if primera else {})
-        sin_datos = sensores_sin_datos(ultimas, primera, ahora, self.cfg.minutos_sin_datos_gris)
+        sin_datos = sensores_sin_datos(ultimas, primera, ahora, self.cfg.minutos_sin_datos_gris,
+                                       self.cfg.lista_sensores_requeridos)
 
         abiertas = repo.alertas_abiertas(self.conn, cama["id"])
         decisiones: list[Decision] = []

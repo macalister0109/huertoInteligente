@@ -13,8 +13,15 @@
     {% if cama.cultivo_nombre %}Cultivo: {{ cama.cultivo_nombre }}{% else %}Sin cultivo asignado{% endif %}
     {% if cama.zona_climatica %} · Zona: {{ cama.zona_climatica }}{% endif %}
   </p>
-  <p class="detalle-ayuda">Últimas 24 horas. La franja verde es el rango ideal.</p>
 </header>
+
+<div class="periodo" role="group" aria-label="Período de los gráficos">
+  <span class="periodo-titulo">Ver:</span>
+  <button type="button" class="boton-periodo" data-horas="24" aria-pressed="true">Últimas 24 horas</button>
+  <button type="button" class="boton-periodo" data-horas="168" aria-pressed="false">7 días</button>
+  <button type="button" class="boton-periodo" data-horas="720" aria-pressed="false">30 días</button>
+</div>
+<p id="detalle-ayuda" class="detalle-ayuda">Últimas 24 horas. La franja verde es el rango ideal.</p>
 
 <section class="graficos">
   <figure class="grafico">
@@ -29,6 +36,35 @@
     <figcaption>Luz</figcaption>
     <div class="lienzo"><canvas id="grafico-luz" aria-label="Gráfico de luz"></canvas></div>
   </figure>
+</section>
+
+<section class="panel-avisos resumen-diario">
+  <h2>Resumen por día (últimos 30 días)</h2>
+  <p class="detalle-ayuda">Promedio del día y, entre paréntesis, el mínimo y el máximo.</p>
+  <div class="tabla-desplazable">
+    <table class="tabla-resumen">
+      <thead>
+        <tr>
+          <th scope="col">Día</th>
+          <th scope="col">Humedad del suelo</th>
+          <th scope="col">Temperatura</th>
+          <th scope="col">Humedad del aire</th>
+          <th scope="col">Lecturas</th>
+        </tr>
+      </thead>
+      <tbody id="resumen-diario"><tr><td colspan="5" class="vacio">Cargando…</td></tr></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel-avisos descarga">
+  <h2>Descargar las lecturas (CSV para Excel)</h2>
+  <form class="form-descarga" method="get" action="{{ url_for('historial.descargar_csv', cama_id=cama.id) }}">
+    <label>Desde <input type="date" name="desde" value="{{ hace_una_semana }}" max="{{ hoy }}" required></label>
+    <label>Hasta <input type="date" name="hasta" value="{{ hoy }}" max="{{ hoy }}" required></label>
+    <button type="submit">Descargar CSV</button>
+  </form>
+  <p class="detalle-ayuda">Todas las lecturas del período, con la hora de Chile y en UTC. Máximo un año por archivo.</p>
 </section>
 
 <section class="panel-avisos">

@@ -229,3 +229,24 @@ button {
 .aviso-ok { background: #eaf4ec; color: var(--verde); }
 .aviso-error { background: #fbeceb; color: var(--rojo); }
 .incidencia p { margin: 0; }
+
+/* -------------------------------------------------------------- historial */
+.periodo { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 0.6rem 0 0.2rem; }
+.periodo-titulo { font-weight: 700; }
+.boton-periodo { background: #e3e1da; color: var(--texto); border: 2px solid transparent; }
+/* El seleccionado se distingue por color Y por borde y marca (no solo color) */
+.boton-periodo[aria-pressed="true"] { background: var(--verde); color: #fff; border-color: #0f4d21; }
+.boton-periodo[aria-pressed="true"]::before { content: "✓ "; }
+
+.resumen-diario, .descarga { margin-bottom: 1rem; }
+.tabla-desplazable { overflow-x: auto; }
+.tabla-resumen { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+.tabla-resumen th, .tabla-resumen td { padding: 0.4rem 0.6rem; text-align: left; border-bottom: 1px solid var(--borde); white-space: nowrap; }
+.tabla-resumen thead th { font-size: 0.85rem; color: var(--texto-suave); }
+.tabla-resumen .rango-dia { color: var(--texto-suave); font-size: 0.85rem; }
+.tabla-resumen .sin-dato, .dia-sin-datos td { color: var(--gris); }
+.tabla-resumen td.vacio { color: var(--texto-suave); }
+
+.form-descarga { display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: flex-end; }
+.form-descarga label { display: grid; gap: 0.2rem; font-size: 0.9rem; }
+.form-descarga input { width: auto; }

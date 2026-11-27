@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import queue
-from datetime import timedelta
+from datetime import timedelta, timezone
 from typing import Any, Optional
 
 from flask import Blueprint, Response, abort, current_app, jsonify, render_template, request
@@ -18,6 +18,7 @@ bp = Blueprint("tablero", __name__)
 
 LATIDO_SSE_S = 15
 PUNTOS_MAX_GRAFICO = 720
+HORAS_MAX_GRAFICO = 30 * 24
 
 
 def _num(valor: Any, decimales: int = 1) -> Optional[float]:
@@ -45,7 +46,11 @@ def detalle(cama_id: int):
     cama = consultas.cama(bd(), cama_id)
     if cama is None or not cama["activa"]:
         abort(404)
-    return render_template("cama.html", cama=cama)
+    # Fechas por defecto del formulario de descarga CSV (últimos 7 días, hora de Chile)
+    ctx = contexto()
+    hoy = ctx.reloj().replace(tzinfo=timezone.utc).astimezone(ctx.zona).date()
+    return render_template("cama.html", cama=cama, hoy=hoy.isoformat(),
+                           hace_una_semana=(hoy - timedelta(days=6)).isoformat())
 
 
 # ---------------------------------------------------------------------------
@@ -114,7 +119,8 @@ def api_serie(cama_id: int):
     cama = consultas.cama(conn, cama_id)
     if cama is None:
         abort(404)
-    horas = max(1, min(request.args.get("horas", 24, type=int), 168))
+    # Hasta 30 días; los puntos se promedian para no pasar de PUNTOS_MAX_GRAFICO
+    horas = max(1, min(request.args.get("horas", 24, type=int), HORAS_MAX_GRAFICO))
     hasta = ctx.reloj()
     desde = hasta - timedelta(hours=horas)
     balde = max(60, horas * 3600 // PUNTOS_MAX_GRAFICO)

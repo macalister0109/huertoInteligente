@@ -191,3 +191,18 @@ def test_rojo_con_varias_variables():
                AlertaResumen("poca_luz", "luz", 4)]
     assert calcular_estado(True, True, [], alertas).mensaje == \
         "Revisar: humedad 22 %, temperatura 36 °C, poca luz"
+
+
+def test_sensores_no_requeridos_no_ponen_gris():
+    ahora = datetime(2026, 11, 26, 15, 0)
+    ultimas = {"suelo": ahora, "temperatura": ahora, "luz": None}
+    primera = ahora - timedelta(hours=5)
+    assert sensores_sin_datos(ultimas, primera, ahora, 120) == ["luz"]
+    assert sensores_sin_datos(ultimas, primera, ahora, 120, ("suelo", "temperatura")) == []
+
+
+def test_config_sensores_requeridos_por_defecto_sin_luz():
+    from comun.config import Config
+    assert Config().lista_sensores_requeridos == ("suelo", "temperatura")
+    cfg = Config.desde_entorno({"SENSORES_REQUERIDOS": "suelo, temperatura, luz"})
+    assert cfg.lista_sensores_requeridos == ("suelo", "temperatura", "luz")

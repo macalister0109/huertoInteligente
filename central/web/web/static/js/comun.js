@@ -19,6 +19,9 @@ const Huerto = (() => {
     return esHoy(fecha) ? texto : `${formatoDia.format(fecha)} ${texto}`;
   }
 
+  /** "25 nov" (día en hora de Chile). */
+  const dia = (iso) => (iso ? formatoDia.format(new Date(iso)) : "—");
+
   const entero = (v) => (v === null || v === undefined ? null : formatoEntero.format(v));
   const decimal = (v) => (v === null || v === undefined ? null : formatoDecimal.format(v));
 
@@ -90,5 +93,5 @@ const Huerto = (() => {
     document.querySelectorAll("time[data-iso]").forEach((t) => { t.textContent = hora(t.dataset.iso); });
   });
 
-  return { hora, entero, decimal, el, avisoConexion, obtenerJson, enviarJson, dibujarAvisos };
+  return { hora, dia, entero, decimal, el, avisoConexion, obtenerJson, enviarJson, dibujarAvisos };
 })();

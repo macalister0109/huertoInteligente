@@ -1,8 +1,9 @@
 """HU-05: estado (color y mensaje) de cada cama.
 
 Prioridad: gris > rojo > sin_configurar > verde.
-* Gris: no hay lecturas, o ALGUNO de los tres sensores (suelo, temperatura,
-  luz) lleva más de N minutos sin datos válidos. «Sensor de temperatura sin
+* Gris: no hay lecturas, o ALGUNO de los sensores requeridos (por defecto
+  suelo y temperatura; la luz solo si hay sensor) lleva más de N minutos sin
+  datos válidos. «Sensor de temperatura sin
   conexión».
 * Rojo: alguna alerta abierta. «Revisar: humedad 22 %».
 * Sin configurar: la cama no tiene cultivo ni rangos. «Configura un cultivo…».
@@ -38,7 +39,7 @@ class AlertaResumen:
 
 def sensores_sin_datos(ultimas_validas: Mapping[str, Optional[datetime]],
                        primera_lectura: Optional[datetime], ahora: datetime,
-                       minutos: float) -> list[str]:
+                       minutos: float, requeridos: Sequence[str] = SENSORES) -> list[str]:
     """Sensores sin datos válidos en los últimos `minutos`.
 
     Un sensor que nunca envió datos válidos se mide desde la primera
@@ -48,7 +49,9 @@ def sensores_sin_datos(ultimas_validas: Mapping[str, Optional[datetime]],
         return []
     limite = ahora - timedelta(minutes=minutos)
     resultado = []
-    for sensor in SENSORES:
+    for sensor in SENSORES:              # en este orden, para el mensaje
+        if sensor not in requeridos:
+            continue
         referencia = ultimas_validas.get(sensor) or primera_lectura
         if referencia < limite:
             resultado.append(sensor)

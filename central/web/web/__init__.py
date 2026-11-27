@@ -57,10 +57,12 @@ def crear_app(cfg: Optional[ConfigWeb] = None, difusor: Optional[Difusor] = None
 
     from .rutas_api import bp as bp_api
     from .rutas_config import bp as bp_config
+    from .rutas_historial import bp as bp_historial
     from .rutas_tablero import bp as bp_tablero
     app.register_blueprint(bp_tablero)
     app.register_blueprint(bp_config)
     app.register_blueprint(bp_api)
+    app.register_blueprint(bp_historial)
 
     @app.teardown_appcontext
     def cerrar_bd(_error=None):

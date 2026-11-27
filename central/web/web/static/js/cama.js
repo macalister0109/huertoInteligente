@@ -1,4 +1,5 @@
-/* Detalle de cama: gráficos de las últimas 24 h con la franja ideal sombreada. */
+/* Detalle de cama: gráficos (24 h, 7 o 30 días) con la franja ideal sombreada,
+   resumen por día y descarga CSV (el formulario funciona sin JavaScript). */
 "use strict";
 
 (() => {
@@ -7,6 +8,14 @@
   const RECARGA_MS = 60_000;
   const COLORES = { suelo: "#1a56b0", temp: "#c4570c", luz: "#a87a00", ideal: "rgba(27, 122, 54, 0.16)", borde: "rgba(27, 122, 54, 0.7)" };
   const graficos = {};
+  let horas = 24;
+  const TEXTO_PERIODO = { 24: "Últimas 24 horas", 168: "Últimos 7 días", 720: "Últimos 30 días" };
+
+  // En períodos largos el eje muestra el día; en 24 h, la hora
+  const etiquetaEje = (v) => {
+    const iso = new Date(v).toISOString();
+    return horas > 24 ? H.dia(iso) : H.hora(iso);
+  };
 
   Chart.defaults.font.size = 15;
   Chart.defaults.color = "#222";
@@ -45,6 +54,7 @@
       graficos[id].data.datasets = datasets;
       graficos[id].options.scales.x.min = opciones.desde;
       graficos[id].options.scales.x.max = opciones.hasta;
+      graficos[id].options.scales.x.ticks.callback = etiquetaEje;
       graficos[id].update("none");
       return;
     }
@@ -58,7 +68,7 @@
         scales: {
           x: {
             type: "linear", min: opciones.desde, max: opciones.hasta,
-            ticks: { maxTicksLimit: 7, callback: (v) => H.hora(new Date(v).toISOString()) },
+            ticks: { maxTicksLimit: 7, callback: etiquetaEje },
           },
           y: { ticks: { callback: (v) => `${H.entero(v)} ${unidad}` } },
         },
@@ -79,7 +89,7 @@
   async function cargar() {
     let datos;
     try {
-      datos = await H.obtenerJson(`/api/camas/${camaId}/serie?horas=24`);
+      datos = await H.obtenerJson(`/api/camas/${camaId}/serie?horas=${horas}`);
       H.avisoConexion("");
     } catch (e) {
       H.avisoConexion("Sin conexión con el equipo central. Reintentando…");
@@ -102,6 +112,50 @@
       "Sin avisos en los últimos 7 días.", false);
   }
 
+  // ------------------------------------------------------------ resumen por día
+  function celda(v, unidad) {
+    if (!v) return H.el("td", { class: "sin-dato" }, "—");
+    return H.el("td", {},
+      H.el("strong", {}, `${H.entero(v.prom)} ${unidad}`),
+      H.el("span", { class: "rango-dia" }, ` (${H.entero(v.min)} a ${H.entero(v.max)})`));
+  }
+
+  async function cargarResumen() {
+    const cuerpo = document.getElementById("resumen-diario");
+    let datos;
+    try {
+      datos = await H.obtenerJson(`/api/camas/${camaId}/diario?dias=30`);
+    } catch (e) {
+      return;   // el aviso de conexión ya lo muestra cargar()
+    }
+    const conDatos = datos.dias.filter((d) => d.lecturas > 0);
+    if (!conDatos.length) {
+      cuerpo.replaceChildren(H.el("tr", {}, H.el("td", { colspan: 5, class: "vacio" }, "Aún no hay lecturas.")));
+      return;
+    }
+    // Desde el primer día con datos: no se listan los días antes de instalar el nodo
+    const primero = datos.dias.indexOf(conDatos[conDatos.length - 1]);
+    cuerpo.replaceChildren(...datos.dias.slice(0, primero + 1).map((d) =>
+      H.el("tr", { class: d.lecturas ? null : "dia-sin-datos" },
+        H.el("th", { scope: "row" }, H.dia(`${d.fecha}T12:00:00`)),
+        celda(d.suelo, "%"), celda(d.temp, "°C"), celda(d.hum_aire, "%"),
+        H.el("td", {}, d.lecturas ? H.entero(d.lecturas) : "Sin datos"))));
+  }
+
+  // ------------------------------------------------------------ período
+  document.querySelectorAll(".boton-periodo").forEach((boton) => {
+    boton.addEventListener("click", () => {
+      horas = Number(boton.dataset.horas);
+      document.querySelectorAll(".boton-periodo").forEach((b) =>
+        b.setAttribute("aria-pressed", String(b === boton)));
+      document.getElementById("detalle-ayuda").textContent =
+        `${TEXTO_PERIODO[horas]}. La franja verde es el rango ideal.`;
+      cargar();
+    });
+  });
+
   cargar();
+  cargarResumen();
   setInterval(cargar, RECARGA_MS);
+  setInterval(cargarResumen, 10 * RECARGA_MS);
 })();

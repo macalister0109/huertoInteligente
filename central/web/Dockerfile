@@ -18,7 +18,8 @@ COPY procesador/procesador/ procesador/
 # Para aplicar migraciones dentro del contenedor (python -m comun.migrar)
 COPY db/ db/
 
-RUN useradd --system --no-create-home huerto
+# Con carpeta personal: gunicorn guarda ahí su socket de control
+RUN useradd --system --create-home huerto
 USER huerto
 
 EXPOSE 8080
