@@ -34,10 +34,15 @@ passwd_cmd() {
     # En Windows el chmod no tiene efecto y solo queda una advertencia.
     docker run --rm -v "$(pwd)/mosquitto/config:/mosquitto/config" "$IMAGEN" sh -c \
         'set -o pipefail
-         chmod 0700 /mosquitto/config/passwd; chown mosquitto:mosquitto /mosquitto/config/passwd
-         # El broker corre como usuario "mosquitto" y debe poder releer el archivo;
          # mosquitto_passwd advierte que el dueño no es root: se oculta ese aviso.
-         mosquitto_passwd "$@" 2>&1 | { grep -v -e "Future versions" -e "To fix this" || true; }' _ "$@"
+         mosquitto_passwd "$@" 2>&1 | { grep -v -e "Future versions" -e "To fix this" || true; }
+         estado=$?
+         # mosquitto_passwd REESCRIBE el archivo como root (0600). El broker corre como
+         # usuario "mosquitto" y debe poder leerlo: el dueño se corrige DESPUÉS de escribir.
+         # (En Windows no se nota porque Docker Desktop ignora estos permisos.)
+         chown mosquitto:mosquitto /mosquitto/config/passwd
+         chmod 0700 /mosquitto/config/passwd
+         exit $estado' _ "$@"
 }
 
 recargar() {
