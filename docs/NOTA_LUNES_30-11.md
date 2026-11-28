@@ -49,10 +49,14 @@
 - Copiar los valores finales en `firmware/nodo/config.h` (`SUELO_MV_SECO` y `SUELO_MV_MOJADO`) y
   volver a subir el programa: la OLED y el LED de la placa siguen con mojado 2042 mV y muestran
   100 %.
-- Correo del formulario de la portada: ya quedó `macarena@mjamett.cl` por defecto en el código.
-  Si no se desplegó el fin de semana: `git pull` y `docker compose up -d --build web` (desde
-  `~/huertoInteligente/central`, sin migraciones) y comprobar que la portada ya no avisa que falta
-  el correo.
+- Formulario de la portada (si no quedó listo el fin de semana): ahora el **servidor envía el
+  correo** a `macarena@mjamett.cl`. Pasos:
+  1. En el panel del hosting de mjamett.cl, crear una cuenta (ej. `no-responder@mjamett.cl`) y
+     anotar el servidor SMTP y el puerto (465 SSL o 587).
+  2. En `~/huertoInteligente/central/.env` del servidor: `SMTP_HOST`, `SMTP_PUERTO`,
+     `SMTP_USUARIO` y `SMTP_CLAVE`.
+  3. `git pull` y `docker compose up -d --build web` (sin migraciones).
+  4. Enviar el formulario de prueba y revisar que llegue; si no, `docker compose logs --tail 20 web`.
 - Revisar los registros del procesador: `docker compose logs --tail 50 procesador` (sin `ERROR`).
 - La instalación del 27-11 (la sonda al aire, de 0 % a 100 %) aparece como un «Riego detectado»
   falso. Si molesta, se puede marcar ese tramo como «instalación» para que no cuente.

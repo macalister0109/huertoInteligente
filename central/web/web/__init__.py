@@ -23,11 +23,13 @@ from .clima import CrearProveedor, ServicioClima
 from .config import ConfigWeb
 from .contexto import Contexto
 from .difusor import Difusor, DifusorMqtt
+from .correo import enviar_smtp
 
 
 def crear_app(cfg: Optional[ConfigWeb] = None, difusor: Optional[Difusor] = None,
               conectar_bd: Optional[Callable] = None, reloj: Optional[Callable] = None,
-              crear_proveedor_clima: Optional[CrearProveedor] = None) -> Flask:
+              crear_proveedor_clima: Optional[CrearProveedor] = None,
+              enviar_correo: Optional[Callable] = None) -> Flask:
     """`crear_proveedor_clima(nombre)` permite a los tests usar un proveedor falso."""
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -58,6 +60,7 @@ def crear_app(cfg: Optional[ConfigWeb] = None, difusor: Optional[Difusor] = None
         reloj=reloj,
         zona=ZoneInfo(cfg.zona_horaria),
         clima=ServicioClima(cfg.bd, reloj, crear_proveedor_clima),
+        enviar_correo=enviar_correo or enviar_smtp,
     )
 
     from .rutas_api import bp as bp_api
@@ -65,6 +68,7 @@ def crear_app(cfg: Optional[ConfigWeb] = None, difusor: Optional[Difusor] = None
     from .rutas_config import bp as bp_config
     from .rutas_exportar import bp as bp_exportar
     from .rutas_historial import bp as bp_historial
+    from .rutas_piloto import bp as bp_piloto
     from .rutas_tablero import bp as bp_tablero
     from .rutas_tendencia import bp as bp_tendencia
     app.register_blueprint(bp_tablero)
@@ -74,6 +78,7 @@ def crear_app(cfg: Optional[ConfigWeb] = None, difusor: Optional[Difusor] = None
     app.register_blueprint(bp_clima)
     app.register_blueprint(bp_tendencia)
     app.register_blueprint(bp_exportar)
+    app.register_blueprint(bp_piloto)
 
     @app.teardown_appcontext
     def cerrar_bd(_error=None):

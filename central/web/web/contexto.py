@@ -20,3 +20,5 @@ class Contexto:
     reloj: Callable[[], datetime]
     zona: ZoneInfo
     clima: "ServicioClima"
+    # (cfg, EmailMessage) -> None. Por defecto, SMTP; los tests usan uno falso.
+    enviar_correo: Callable = None  # type: ignore[assignment]

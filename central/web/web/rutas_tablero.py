@@ -38,7 +38,9 @@ def inicio():
     La pantalla del huerto sigue entrando con /?kiosco=1: se la manda al tablero."""
     if request.args.get("kiosco") == "1":
         return redirect(url_for("tablero.tablero", kiosco=1))
-    return render_template("proyecto.html", piloto_correo=contexto().cfg.piloto_correo)
+    cfg = contexto().cfg
+    return render_template("proyecto.html", piloto_correo=cfg.piloto_correo,
+                           envio_configurado=cfg.smtp_configurado)
 
 
 @bp.get("/tablero")

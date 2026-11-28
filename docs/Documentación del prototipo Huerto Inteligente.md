@@ -19,7 +19,7 @@ El sistema admite varias camas identificadas por nodo. El despliegue registrado 
 | **Ficha de cama** · `/cama/<id>` | Consultar gráficos de 24 horas, 7 o 30 días, resúmenes diarios, rangos ideales, avisos de los últimos 7 días y tendencia de humedad. Permite descargar lecturas en CSV por rango de fechas. |
 | **Configuración** · `/configuracion/` | El docente entra con un PIN para administrar camas, cultivos, zonas y rangos, elegir el proveedor de clima exterior y configurar el cálculo de tendencia. También puede exportar conjuntos de datos para análisis. |
 
-El monitoreo registra variables ambientales y funciona sin cuentas individuales de estudiantes. El formulario de contacto pide nombre, estamento y correo para preparar un mensaje en el cliente de correo de la persona. Esos datos se comparten con el equipo del piloto cuando la persona envía el mensaje. [Formulario del piloto](../central/web/web/static/js/landing.js) · [Rutas del tablero](../central/web/web/rutas_tablero.py) · [Historial](../central/web/web/rutas_historial.py)
+El monitoreo registra variables ambientales y funciona sin cuentas individuales de estudiantes. El formulario de contacto pide nombre, estamento y correo. El servidor envía esos datos por correo al equipo del piloto y no los guarda en la base de datos. [Formulario del piloto](../central/web/web/rutas_piloto.py) · [Rutas del tablero](../central/web/web/rutas_tablero.py) · [Historial](../central/web/web/rutas_historial.py)
 
 ## 3. Cómo funciona el prototipo
 

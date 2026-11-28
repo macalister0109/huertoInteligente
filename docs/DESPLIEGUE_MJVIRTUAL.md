@@ -193,7 +193,8 @@ toca las lecturas.
 
 | Variable | Para qué |
 | --- | --- |
-| `PILOTO_CORREO` | Correo que recibe el formulario «Sumarse al piloto» de `/proyecto`. Sin ella, la página avisa que falta. |
+| `PILOTO_CORREO` | Correo que recibe el formulario «Sumarse al piloto» de la portada. Por defecto, `macarena@mjamett.cl`. |
+| `SMTP_HOST`, `SMTP_PUERTO`, `SMTP_USUARIO`, `SMTP_CLAVE`, `SMTP_REMITENTE` | Cuenta de correo del hosting con la que el servidor envía las solicitudes del formulario (puerto 465 = SSL, 587 = STARTTLS). Sin ellas, la portada avisa que falta configurar el envío. Probar después de cambiarlas: enviar el formulario y revisar `docker compose logs --tail 20 web` («solicitud enviada» o el error SMTP). |
 | `EXPORT_TOKEN` | Token (16 caracteres o más) para exportar datos desde scripts o notebooks. Sin él, solo se exporta con el PIN. |
 | `CLIMA_LAT`, `CLIMA_LON` | Ubicación del clima de referencia (por defecto, La Pintana). También se cambia en `/configuracion`. |
 | `DMC_USER_EMAIL`, `DMC_API_TOKEN`, `OPENWEATHER_API_KEY` | Solo si se usa la DMC u OpenWeatherMap en vez de Open-Meteo. |

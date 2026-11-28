@@ -216,7 +216,8 @@
         <h2 class="titulo-seccion">Hagamos que el huerto del Marcelino Champagnat florezca con ciencia y comunidad</h2>
         <p class="intro">Validemos juntos el prototipo piloto, ajustado al clima de La Pintana, a nuestro calendario
           escolar y a los cultivos de nuestros estudiantes.</p>
-        <form class="formulario" id="formulario-piloto" novalidate data-correo="{{ piloto_correo }}">
+        <form class="formulario" id="formulario-piloto" novalidate data-correo="{{ piloto_correo }}"
+              action="{{ url_for('piloto.solicitud_piloto') }}">
           <label>Nombre completo
             <input name="nombre" autocomplete="name" required maxlength="80"></label>
           <label>Estamento
@@ -228,19 +229,23 @@
             <input name="correo" type="email" autocomplete="email" required maxlength="120"></label>
           <label>Comentario o propuesta de cultivo <span class="opcional">(opcional)</span>
             <textarea name="comentario" rows="4" maxlength="600"></textarea></label>
+          {# Campo trampa para robots: las personas no lo ven ni lo llenan #}
+          <label class="trampa" aria-hidden="true">Sitio web
+            <input name="sitio_web" tabindex="-1" autocomplete="off"></label>
           <p class="error-formulario" role="alert" hidden></p>
           <button class="cta cta-grande" type="submit">Unirme al proyecto piloto smartYusChaMau</button>
-          <p class="micro">Este sitio no guarda tus datos: al enviar, se abre tu correo con el mensaje listo para que
-            lo mandes tú.</p>
+          <p class="micro">Tus datos se envían solo por correo al equipo del piloto para contactarte. Este sitio no
+            los guarda.</p>
         </form>
         <div class="confirmacion" id="confirmacion" role="status" hidden>
           {{ icono('ok') }}
           <h3>¡Gracias por sumarte!</h3>
-          <p>Se abrió tu programa de correo con la solicitud. Revísala y envíala para que el equipo del proyecto te
-            contacte. Si no se abrió, escribe a <a data-campo="correo"></a>.</p>
+          <p>Recibimos tu solicitud. El equipo del proyecto te escribirá a <strong data-campo="visitante"></strong>.
+            Si tienes dudas, escribe a <a data-campo="correo"></a>.</p>
         </div>
-        {% if not piloto_correo %}
-        <p class="aviso-config">Aún no hay un correo de contacto configurado para el piloto (PILOTO_CORREO).</p>
+        {% if not envio_configurado %}
+        <p class="aviso-config">Falta configurar el envío automático del formulario (SMTP_HOST, SMTP_USUARIO y
+          SMTP_CLAVE en el .env del servidor).</p>
         {% endif %}
       </div>
     </section>

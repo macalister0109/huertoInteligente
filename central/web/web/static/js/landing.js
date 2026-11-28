@@ -1,6 +1,6 @@
 /* Página del proyecto: menú móvil, simulador de cama (HU-05) y formulario.
-   Sin dependencias. El formulario NO envía datos a este sitio: abre el correo
-   del visitante con el mensaje listo (el sistema no guarda datos personales). */
+   Sin dependencias. El formulario se envía a POST /api/piloto: el servidor
+   manda el correo al equipo del piloto y no guarda los datos. */
 "use strict";
 
 (() => {
@@ -96,32 +96,57 @@
     return problemas;
   }
 
-  formulario.addEventListener("submit", (e) => {
+  function mostrarError(texto, correo) {
+    error.textContent = texto;
+    if (correo) {
+      error.append(" Escríbenos directamente a ");
+      const enlace = document.createElement("a");
+      enlace.href = `mailto:${correo}`;
+      enlace.textContent = correo;
+      error.append(enlace, ".");
+    }
+    error.hidden = false;
+  }
+
+  const boton = formulario.querySelector('button[type="submit"]');
+  const textoBoton = boton.textContent;
+
+  formulario.addEventListener("submit", async (e) => {
     e.preventDefault();
     const problemas = validar();
     if (problemas.length) {
-      error.textContent = problemas.join(" ");
-      error.hidden = false;
+      mostrarError(problemas.join(" "));
       formulario.querySelector('[aria-invalid="true"]')?.focus();
       return;
     }
     error.hidden = true;
-    if (!correoDestino) {
-      error.textContent = "Todavía no hay un correo de contacto configurado para el piloto. Avísale al equipo del proyecto.";
-      error.hidden = false;
+    const f = formulario.elements;
+    const datos = {
+      nombre: f.nombre.value.trim(), estamento: f.estamento.value, correo: f.correo.value.trim(),
+      comentario: f.comentario.value.trim(), sitio_web: f.sitio_web ? f.sitio_web.value : "",
+    };
+    boton.disabled = true;
+    boton.textContent = "Enviando…";
+    let respuesta = null;
+    let cuerpo = {};
+    try {
+      respuesta = await fetch(formulario.action, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(datos),
+      });
+      cuerpo = await respuesta.json().catch(() => ({}));
+    } catch (_) {
+      respuesta = null;
+    } finally {
+      boton.disabled = false;
+      boton.textContent = textoBoton;
+    }
+    if (!respuesta || !respuesta.ok) {
+      const texto = respuesta ? (cuerpo.error || "No se pudo enviar la solicitud.") :
+        "No hay conexión con el sitio. Revisa tu internet e inténtalo de nuevo.";
+      mostrarError(texto, cuerpo.correo || (respuesta && respuesta.status >= 500 ? correoDestino : ""));
       return;
     }
-    const f = formulario.elements;
-    const cuerpo = [
-      `Nombre: ${f.nombre.value.trim()}`,
-      `Estamento: ${f.estamento.value}`,
-      `Correo: ${f.correo.value.trim()}`,
-      "",
-      "Comentario o propuesta de cultivo:",
-      f.comentario.value.trim() || "(sin comentario)",
-    ].join("\n");
-    const asunto = `Quiero sumarme al piloto smartYusChaMau (${f.estamento.value})`;
-    window.location.href = `mailto:${encodeURIComponent(correoDestino)}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
+    confirmacion.querySelector('[data-campo="visitante"]').textContent = datos.correo;
     const enlace = confirmacion.querySelector('[data-campo="correo"]');
     enlace.textContent = correoDestino;
     enlace.href = `mailto:${correoDestino}`;

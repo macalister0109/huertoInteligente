@@ -35,11 +35,22 @@ class ConfigWeb:
     # true cuando el tablero se sirve por HTTPS: la cookie de sesión no viaja por HTTP
     cookie_segura: bool = False
     # Correo que recibe las solicitudes del formulario de la página del proyecto.
-    # El sistema NO guarda esos datos: el formulario abre el correo del visitante.
+    # El servidor las envía por SMTP y NO las guarda en la BD.
     piloto_correo: str = ""     # desde_entorno usa PILOTO_CORREO_POR_DEFECTO si falta
+    # Cuenta SMTP que envía esas solicitudes (la del hosting de mjamett.cl).
+    # Puerto 465 = SSL directo; cualquier otro (ej. 587) = STARTTLS.
+    smtp_host: str = ""
+    smtp_puerto: int = 465
+    smtp_usuario: str = ""
+    smtp_clave: str = ""
+    smtp_remitente: str = ""    # vacío = el mismo smtp_usuario
     # Token para exportar datos desde scripts o notebooks (Authorization: Bearer …).
     # Vacío = solo con la sesión docente. Mínimo 16 caracteres.
     export_token: str = ""
+
+    @property
+    def smtp_configurado(self) -> bool:
+        return bool(self.smtp_host and self.smtp_usuario and self.smtp_clave and self.piloto_correo)
 
     @property
     def pin_configurado(self) -> bool:
@@ -62,5 +73,10 @@ class ConfigWeb:
             cookie_segura=(entorno.get("COOKIE_SEGURA", "").strip().lower()
                            in ("1", "true", "si", "sí", "yes", "on")),
             piloto_correo=entorno.get("PILOTO_CORREO", "").strip() or PILOTO_CORREO_POR_DEFECTO,
+            smtp_host=entorno.get("SMTP_HOST", "").strip(),
+            smtp_puerto=int(entorno.get("SMTP_PUERTO") or 465),
+            smtp_usuario=entorno.get("SMTP_USUARIO", "").strip(),
+            smtp_clave=entorno.get("SMTP_CLAVE", ""),
+            smtp_remitente=entorno.get("SMTP_REMITENTE", "").strip(),
             export_token=(lambda t: t if len(t) >= 16 else "")(entorno.get("EXPORT_TOKEN", "").strip()),
         )

@@ -20,11 +20,11 @@ commit `625d4df` (desplegado en el servidor el 28-11-2026, con la migración 008
 | Página principal, camas y configuración | ✅ Inicio (presentación del proyecto) en https://huerto.mjvirtual.cl · camas en `/tablero` · kiosco en `/tablero?kiosco=1` |
 | Clima exterior de referencia (Open-Meteo) | ✅ Responde con `estado: ok` desde el servidor |
 | Tendencias y predicción (RF-15) | ✅ Se calcula de nuevo desde la calibración en el servidor: la Cama A muestra «Subiendo, +0,4 pts/h, sin tendencia clara (no se está secando)», R² 0,6. Alerta preventiva **desactivada** (por defecto) |
-| Tests automáticos | ✅ 429 de 429 en verde (pytest, en el PC, 28-11-2026) |
+| Tests automáticos | ✅ 448 de 448 en verde (pytest, en el PC, 28-11-2026) |
 | Firmware del nodo | ✅ La placa envía lecturas al servidor (la Cama A en https://huerto.mjvirtual.cl; del 27-11 23:40 al 28-11 10:43 pasó de seq 896 a 2206, unas 1310 de 1326 esperadas a 30 s; llegan en unos 3 s) |
 | Calibración de la sonda | ⚠️ **Provisional, en el servidor:** seco 3160 mV, mojado 980 mV (el mínimo registrado, 27-11 17:42), con el historial recalculado. 1422 mV → 79,7 %. **Lunes 30-11-2026:** con la tierra saturada, «Usar la lectura actual como mojado» en `/configuracion`. La placa (OLED y LED) sigue con `config.h` (mojado 2042 mV) y muestra 100 % |
 | Red (firewall y perfil privado del PC) | ➖ Ya no hace falta con el servidor: el ESP32 solo necesita salir a internet |
-| Correo del formulario de contacto (`PILOTO_CORREO`) | ⏳ Resuelto en el código (28-11-2026): sin `PILOTO_CORREO` en el `.env`, se usa `macarena@mjamett.cl`. Falta desplegarlo: `git pull` + `docker compose up -d --build web` |
+| Formulario de contacto de la portada | ⏳ Antes solo abría el programa de correo del visitante (con Gmail en el navegador no pasaba nada). Desde el 28-11-2026 el **servidor envía el correo** a `macarena@mjamett.cl` por SMTP (no guarda los datos). Falta: crear la cuenta SMTP en el hosting, poner `SMTP_*` en el `.env` del servidor y desplegar (`git pull` + `docker compose up -d --build web`, sin migraciones) |
 | Prueba con la placa real y corte de WiFi | ⏳ Pendiente |
 | Evaluación del modelo (CQ-10 a CQ-13) | ⏳ Faltan semanas de lecturas reales: `tools/evaluar_tendencia.py` |
 | Rangos por zona | ⏳ Valores de ejemplo: confirmar con fichas INIA/INDAP |

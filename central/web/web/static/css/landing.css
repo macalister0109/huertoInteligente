@@ -198,6 +198,9 @@ p { margin: 0 0 0.9rem; }
 .opcional { font-weight: 400; color: var(--texto-suave); }
 .error-formulario { color: #b91c1c; font-weight: 600; margin: 0; }
 .formulario .cta { width: 100%; }
+.formulario .cta[disabled] { opacity: 0.7; cursor: wait; }
+/* Campo trampa para robots: fuera de la pantalla, no con display:none */
+.formulario .trampa { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
 .confirmacion { text-align: center; background: #ecfdf5; border: 2px solid var(--ok); border-radius: 24px; padding: 2rem; }
 .confirmacion > .icono-svg { width: 3rem; height: 3rem; color: var(--verde); }
 .confirmacion h3 { color: var(--verde-oscuro); font-size: 1.5rem; }

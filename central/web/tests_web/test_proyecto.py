@@ -53,16 +53,18 @@ def test_menu_con_las_opciones_actuales(cliente):
     assert 'href="/" aria-current="page">Inicio' in cliente.get("/").get_data(as_text=True)
 
 
-def test_formulario_sin_correo_configurado_lo_avisa(cliente):
+def test_formulario_sin_smtp_configurado_lo_avisa(cliente):
     html = cliente.get("/").get_data(as_text=True)
-    assert 'data-correo=""' in html and "PILOTO_CORREO" in html
+    assert "Falta configurar el envío automático" in html and "SMTP_HOST" in html
+    assert 'action="/api/piloto"' in html and 'name="sitio_web"' in html
 
 
 def test_formulario_con_correo_configurado(bd, difusor, reloj):
-    cfg = ConfigWeb(bd=CFG, pin_docente="2468", clave_sesion="x", piloto_correo="huerto@colegio.cl")
+    cfg = ConfigWeb(bd=CFG, pin_docente="2468", clave_sesion="x", piloto_correo="huerto@colegio.cl",
+                    smtp_host="mail.colegio.cl", smtp_usuario="no-responder@colegio.cl", smtp_clave="x")
     app = crear_app(cfg, difusor=difusor, conectar_bd=lambda: conectar(CFG), reloj=reloj)
     html = app.test_client().get("/").get_data(as_text=True)
-    assert 'data-correo="huerto@colegio.cl"' in html and "no hay un correo de contacto" not in html
+    assert 'data-correo="huerto@colegio.cl"' in html and "Falta configurar el envío" not in html
 
 
 def test_sin_piloto_correo_en_el_env_se_usa_el_del_equipo():
