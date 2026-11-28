@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import logging
 import re
-import smtplib
 import threading
 from collections import deque
 from datetime import datetime, timedelta, timezone
@@ -151,7 +150,7 @@ def solicitud_piloto():
     ahora_local = ahora.replace(tzinfo=timezone.utc).astimezone(ctx.zona)
     try:
         ctx.enviar_correo(cfg, armar_mensaje(cfg, solicitud, ahora_local))
-    except (smtplib.SMTPException, OSError) as e:
+    except Exception as e:   # SMTP, red, TLS, clave con tildes…: el visitante siempre recibe JSON
         log.error("Formulario del piloto: el servidor SMTP falló (%s: %s)", type(e).__name__, e)
         return jsonify(error="No se pudo enviar en este momento.", correo=cfg.piloto_correo), 503
     log.info("Formulario del piloto: solicitud enviada a %s", cfg.piloto_correo)

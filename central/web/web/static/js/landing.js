@@ -141,7 +141,7 @@
       boton.textContent = textoBoton;
     }
     if (!respuesta || !respuesta.ok) {
-      const texto = respuesta ? (cuerpo.error || "No se pudo enviar la solicitud.") :
+      const texto = respuesta ? (cuerpo.error || `No se pudo enviar la solicitud (error ${respuesta.status}).`) :
         "No hay conexión con el sitio. Revisa tu internet e inténtalo de nuevo.";
       mostrarError(texto, cuerpo.correo || (respuesta && respuesta.status >= 500 ? correoDestino : ""));
       return;

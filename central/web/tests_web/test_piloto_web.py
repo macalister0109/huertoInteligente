@@ -125,7 +125,8 @@ def test_sin_smtp_responde_503_con_el_correo_para_escribir_directo(crear, buzon)
 
 
 @pytest.mark.parametrize("falla", [smtplib.SMTPAuthenticationError(535, b"mala clave"),
-                                   TimeoutError("sin respuesta"), ConnectionRefusedError()])
+                                   TimeoutError("sin respuesta"), ConnectionRefusedError(),
+                                   UnicodeEncodeError("ascii", "contraseña", 6, 7, "ordinal not in range")])
 def test_si_el_smtp_falla_responde_503(cliente, buzon, falla):
     buzon.falla = falla
     r = enviar(cliente)
