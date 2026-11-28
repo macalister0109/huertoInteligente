@@ -6,7 +6,8 @@ import queue
 from datetime import timedelta, timezone
 from typing import Any, Optional
 
-from flask import Blueprint, Response, abort, current_app, jsonify, render_template, request
+from flask import (Blueprint, Response, abort, current_app, jsonify, redirect, render_template,
+                   request, url_for)
 
 from comun import mensajes
 from comun.fechas import inicio_del_dia_utc, iso, parsear_iso_utc
@@ -31,6 +32,16 @@ def _num(valor: Any, decimales: int = 1) -> Optional[float]:
 # ---------------------------------------------------------------------------
 
 @bp.get("/")
+def inicio():
+    """Página principal: la presentación del proyecto. Desde ahí se llega a las camas.
+
+    La pantalla del huerto sigue entrando con /?kiosco=1: se la manda al tablero."""
+    if request.args.get("kiosco") == "1":
+        return redirect(url_for("tablero.tablero", kiosco=1))
+    return render_template("proyecto.html", piloto_correo=contexto().cfg.piloto_correo)
+
+
+@bp.get("/tablero")
 def tablero():
     # ?kiosco=1 en la pantalla del huerto: solo esa pantalla mide latencias (CQ-02/03),
     # porque usa el mismo reloj que la Pi y los nodos.
@@ -39,8 +50,8 @@ def tablero():
 
 @bp.get("/proyecto")
 def proyecto():
-    """Página del proyecto (presentación para la comunidad del colegio)."""
-    return render_template("proyecto.html", piloto_correo=contexto().cfg.piloto_correo)
+    """Dirección anterior de la página del proyecto (enlaces ya compartidos)."""
+    return redirect(url_for("tablero.inicio"), code=301)
 
 
 @bp.get("/favicon.ico")

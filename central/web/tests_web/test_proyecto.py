@@ -14,8 +14,8 @@ from web.config import ConfigWeb
 pytestmark = pytest.mark.bd
 
 
-def test_pagina_del_proyecto(cliente):
-    r = cliente.get("/proyecto")
+def test_la_pagina_principal_es_la_del_proyecto(cliente):
+    r = cliente.get("/")
     html = r.get_data(as_text=True)
     assert r.status_code == 200
     assert "Deja de regar «a ojo» en La Pintana" in html
@@ -26,11 +26,17 @@ def test_pagina_del_proyecto(cliente):
         assert seccion in html
     # El dato del 33 % / 32 % va con su fuente y su alcance
     assert "Trees.com (2022)" in html and "evidencia indirecta" in html
+    assert 'href="/tablero"' in html and "Ver las camas en vivo" in html
+
+
+def test_la_direccion_anterior_redirige_al_inicio(cliente):
+    r = cliente.get("/proyecto")
+    assert r.status_code == 301 and r.headers["Location"].endswith("/")
 
 
 def test_pagina_sin_recursos_externos(cliente):
     """Carga rápida, funciona sin internet y respeta la CSP (script-src 'self')."""
-    html = cliente.get("/proyecto").get_data(as_text=True)
+    html = cliente.get("/").get_data(as_text=True)
     assert not re.search(r'(src|href)="https?://', html)
     assert "<style" not in html and "onclick" not in html and "<script>" not in html
     for ruta in ("/static/css/landing.css", "/static/js/landing.js", "/static/img/logo-smartyuschamau-96.webp"):
@@ -38,21 +44,22 @@ def test_pagina_sin_recursos_externos(cliente):
 
 
 def test_menu_con_las_opciones_actuales(cliente):
-    for pagina in ("/", "/proyecto"):
+    for pagina in ("/", "/tablero"):
         html = cliente.get(pagina).get_data(as_text=True)
-        for texto, enlace in (("Proyecto", "/proyecto"), ("Tablero en vivo", "/"),
-                              ("Pantalla del huerto", "/?kiosco=1"), ("Configuración", "/configuracion/")):
+        for texto, enlace in (("Inicio", "/"), ("Camas en vivo", "/tablero"),
+                              ("Pantalla del huerto", "/tablero?kiosco=1"), ("Configuración", "/configuracion/")):
             assert f'href="{enlace}"' in html and texto in html
-    assert 'href="/" aria-current="page">Tablero en vivo' in cliente.get("/").get_data(as_text=True)
+    assert 'href="/tablero" aria-current="page">Camas en vivo' in cliente.get("/tablero").get_data(as_text=True)
+    assert 'href="/" aria-current="page">Inicio' in cliente.get("/").get_data(as_text=True)
 
 
 def test_formulario_sin_correo_configurado_lo_avisa(cliente):
-    html = cliente.get("/proyecto").get_data(as_text=True)
+    html = cliente.get("/").get_data(as_text=True)
     assert 'data-correo=""' in html and "PILOTO_CORREO" in html
 
 
 def test_formulario_con_correo_configurado(bd, difusor, reloj):
     cfg = ConfigWeb(bd=CFG, pin_docente="2468", clave_sesion="x", piloto_correo="huerto@colegio.cl")
     app = crear_app(cfg, difusor=difusor, conectar_bd=lambda: conectar(CFG), reloj=reloj)
-    html = app.test_client().get("/proyecto").get_data(as_text=True)
+    html = app.test_client().get("/").get_data(as_text=True)
     assert 'data-correo="huerto@colegio.cl"' in html and "no hay un correo de contacto" not in html

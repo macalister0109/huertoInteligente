@@ -6,7 +6,7 @@
   const H = Huerto;
   const camaId = document.body.dataset.camaId;
   const RECARGA_MS = 60_000;
-  const COLORES = { suelo: "#1a56b0", temp: "#c4570c", luz: "#a87a00", ideal: "rgba(27, 122, 54, 0.16)", borde: "rgba(27, 122, 54, 0.7)", exterior: "#5b6066", riego: "#0b7fab", recta: "#7b2cbf" };
+  const COLORES = { suelo: "#0f2c59", temp: "#c4570c", luz: "#a87a00", ideal: "rgba(22, 163, 74, 0.14)", borde: "rgba(21, 128, 61, 0.7)", exterior: "#5b6066", riego: "#0b7fab", recta: "#7b2cbf" };
   const graficos = {};
   let horas = 24;
   // Clima exterior (opcional): si no hay, el gráfico de temperatura queda igual
@@ -24,8 +24,11 @@
     return horas > 24 ? H.dia(iso) : H.hora(iso);
   };
 
+  // Misma tipografía y colores que el resto del sitio (huerto.css / landing.css)
+  Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
   Chart.defaults.font.size = 15;
-  Chart.defaults.color = "#222";
+  Chart.defaults.color = "#0f172a";
+  Chart.defaults.borderColor = "#e2e8f0";
   Chart.defaults.animation = false;
 
   function lineaHorizontal(etiqueta, y, desde, hasta, extra = {}) {

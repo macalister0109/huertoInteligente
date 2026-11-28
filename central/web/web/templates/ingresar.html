@@ -1,14 +1,13 @@
 {% extends "base.html" %}
 
-{% block titulo %}Configuración — Huerto Inteligente{% endblock %}
-{% block navegacion %}{% endblock %}
+{% block titulo %}Configuración — smartYusChaMau{% endblock %}
 {% block clase_main %}formulario-angosto{% endblock %}
 
 {% block contenido %}
 <h1>Configuración</h1>
 {% if pin_configurado %}
-<p>Esta parte es para el docente responsable del huerto.</p>
-<form method="post" action="{{ url_for('config.ingresar') }}" class="formulario-pin">
+<p class="ayuda">Esta parte es para el docente responsable del huerto.</p>
+<form method="post" action="{{ url_for('config.ingresar') }}" class="formulario-pin ficha-config">
   <label for="pin">PIN del docente</label>
   <input id="pin" name="pin" type="password" inputmode="numeric" autocomplete="off"
          required minlength="4" maxlength="12" autofocus>
@@ -18,5 +17,5 @@
 <p class="aviso-error">La configuración está desactivada: falta definir <code>PIN_DOCENTE</code>
   en el archivo <code>central/.env</code> del equipo central.</p>
 {% endif %}
-<p><a class="volver" href="{{ url_for('tablero.tablero') }}">&larr; Volver al tablero</a></p>
+<p><a class="volver" href="{{ url_for('tablero.tablero') }}">&larr; Volver a las camas</a></p>
 {% endblock %}

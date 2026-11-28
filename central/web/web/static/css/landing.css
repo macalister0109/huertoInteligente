@@ -210,3 +210,10 @@ p { margin: 0 0 0.9rem; }
 .pie p { margin: 0; flex: 1 1 20rem; }
 .pie strong { color: #fff; }
 .menu-pie a { color: #cbd5e1; }
+
+/* Acceso a las camas en vivo (secundario: el botón principal sigue siendo sumarse) */
+.acciones-hero { display: flex; flex-wrap: wrap; align-items: center; gap: 0.8rem 1.4rem; }
+.enlace-secundario { display: inline-flex; align-items: center; gap: 0.45rem; color: var(--azul-profundo);
+  font-weight: 700; text-decoration: none; border-bottom: 2px solid rgba(15, 44, 89, 0.25); padding: 0.2rem 0; }
+.enlace-secundario:hover { border-bottom-color: var(--azul-profundo); }
+.enlace-secundario .icono-svg { width: 1.3rem; height: 1.3rem; }

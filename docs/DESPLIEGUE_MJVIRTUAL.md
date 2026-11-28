@@ -200,14 +200,18 @@ toca las lecturas.
 
 Después de editar el `.env`: `docker compose up -d` (recrea los servicios con las variables nuevas).
 
-**Página pública del proyecto con el tablero protegido.** Si activas el usuario y la clave de nginx
-(bloque opcional de `despliegue/nginx-huerto.mjvirtual.cl.conf`) y quieres que `/proyecto` siga
-abierta para la comunidad, exime también esa página y sus archivos:
+**Páginas del sitio.** La página principal (`/`) es la presentación del proyecto. Las camas están en
+`/tablero` y la pantalla del huerto en `/tablero?kiosco=1`. Las direcciones anteriores siguen
+funcionando: `/?kiosco=1` lleva al tablero en modo kiosco y `/proyecto` lleva al inicio.
+
+**Página principal pública con las camas protegidas.** Si activas el usuario y la clave de nginx
+(bloque opcional de `despliegue/nginx-huerto.mjvirtual.cl.conf`) y quieres que la página principal
+siga abierta para la comunidad, exime también esa página y sus archivos:
 
 ```nginx
-location = /proyecto { auth_basic off; proxy_pass http://127.0.0.1:18020; proxy_set_header Host $host;
-                       proxy_set_header X-Forwarded-For $remote_addr; proxy_set_header X-Forwarded-Proto $scheme; }
-location /static/    { auth_basic off; proxy_pass http://127.0.0.1:18020; proxy_set_header Host $host; }
+location = / { auth_basic off; proxy_pass http://127.0.0.1:18020; proxy_set_header Host $host;
+               proxy_set_header X-Forwarded-For $remote_addr; proxy_set_header X-Forwarded-Proto $scheme; }
+location /static/ { auth_basic off; proxy_pass http://127.0.0.1:18020; proxy_set_header Host $host; }
 ```
 
 **Ver qué pasa:**

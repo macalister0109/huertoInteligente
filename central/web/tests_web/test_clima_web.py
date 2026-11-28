@@ -66,7 +66,7 @@ def test_timeout_de_la_api_no_afecta_la_vista_de_camas(cliente, datos, clima_fal
     inicio = time.monotonic()
     r = cliente.get("/api/tablero")
     assert r.status_code == 200 and r.get_json()["camas"][0]["nombre"] == "Cama A"
-    assert cliente.get("/").status_code == 200
+    assert cliente.get("/tablero").status_code == 200
     assert cliente.get(f"/cama/{cama}").status_code == 200
     assert cliente.get("/api/alertas").status_code == 200
     assert time.monotonic() - inicio < 1.5
@@ -77,7 +77,7 @@ def test_timeout_de_la_api_no_afecta_la_vista_de_camas(cliente, datos, clima_fal
 
 
 def test_tablero_carga_el_clima_aparte(cliente):
-    html = cliente.get("/").get_data(as_text=True)
+    html = cliente.get("/tablero").get_data(as_text=True)
     assert 'id="clima-exterior"' in html and "js/clima.js" in html
 
 

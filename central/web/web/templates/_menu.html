@@ -2,8 +2,8 @@
 {% macro menu_principal(activo='', clase='menu-principal') %}
 <nav class="{{ clase }}" aria-label="Menú principal">
   <ul>
-    <li><a href="{{ url_for('tablero.proyecto') }}" {% if activo == 'proyecto' %}aria-current="page"{% endif %}>Proyecto</a></li>
-    <li><a href="{{ url_for('tablero.tablero') }}" {% if activo == 'tablero' %}aria-current="page"{% endif %}>Tablero en vivo</a></li>
+    <li><a href="{{ url_for('tablero.inicio') }}" {% if activo == 'proyecto' %}aria-current="page"{% endif %}>Inicio</a></li>
+    <li><a href="{{ url_for('tablero.tablero') }}" {% if activo == 'tablero' %}aria-current="page"{% endif %}>Camas en vivo</a></li>
     <li><a href="{{ url_for('tablero.tablero', kiosco=1) }}">Pantalla del huerto</a></li>
     <li><a href="{{ url_for('config.inicio') }}" {% if activo == 'configuracion' %}aria-current="page"{% endif %}>Configuración</a></li>
   </ul>

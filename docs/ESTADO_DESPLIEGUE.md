@@ -1,7 +1,8 @@
 # Estado del despliegue — Huerto Inteligente, prototipo 1
 
-**Fecha:** 27-11-2026  ·  **Equipo central:** PC con Windows 11 (Docker Desktop 29.9.3)  ·
-**Rama:** `main` (cambios **sin commit**)
+**Actualizado:** 27-11-2026, 23:40  ·  **Equipo central en uso:** servidor `huerto.mjvirtual.cl`
+(VPS Debian)  ·  **Desarrollo:** PC con Windows 11 (Docker Desktop 29.9.3)  ·  **Versión:** `main`,
+commit `c7559f1`
 
 > Este archivo no contiene claves. Las credenciales están solo en archivos que no se suben al
 > repositorio: `central/.env`, `central/mosquitto/config/passwd` y `firmware/nodo/config.h`.
@@ -10,16 +11,20 @@
 
 | Parte | Estado |
 | --- | --- |
-| Base de datos (MariaDB 11.4) | ✅ En marcha, con la migración `001_api_nodos.sql` aplicada |
-| API HTTP para el ESP32 | ✅ En marcha y probada con el simulador (7 de 7 pruebas OK) |
-| Procesador (alertas y estado) | ✅ En marcha, recibe los avisos de la API |
-| Tablero web | ✅ http://localhost:8080 responde |
-| Tests automáticos | ✅ 163 de 163 en verde (pytest) |
-| Firmware del nodo | ✅ Compila sin advertencias · ⏳ **falta subirlo a la placa** |
+| Servidor mjvirtual (`huerto.mjvirtual.cl`) | ✅ En marcha con HTTPS, actualizado el 27-11-2026 a `c7559f1` (ver la sección del servidor) |
+| Base de datos (MariaDB 11.4) | ✅ En el servidor, con las migraciones 001 a 007 aplicadas |
+| API HTTP para el ESP32 | ✅ En marcha; la Cama A recibe lecturas en el servidor |
+| Procesador (alertas, estado, agregados, tendencia, clima) | ✅ En marcha en el servidor |
+| Página principal, camas y configuración | ✅ Inicio (presentación del proyecto) en https://huerto.mjvirtual.cl · camas en `/tablero` · kiosco en `/tablero?kiosco=1` |
+| Clima exterior de referencia (Open-Meteo) | ✅ Responde con `estado: ok` desde el servidor |
+| Tendencias y predicción (RF-15) | ✅ Se calculan; alerta preventiva **desactivada** (por defecto) |
+| Tests automáticos | ✅ 393 de 393 en verde (pytest, en el PC) |
+| Firmware del nodo | ✅ La placa envía lecturas al servidor (la Cama A en https://huerto.mjvirtual.cl, 27-11-2026) · ⚠️ marca humedad 100 %: falta calibrar |
 | Calibración de la sonda en agua | ⏳ Pendiente (`SUELO_MV_MOJADO = -1`) |
-| Red (firewall y perfil privado) | ⏳ Pendiente: lo hace la usuaria como administradora |
+| Red (firewall y perfil privado del PC) | ➖ Ya no hace falta con el servidor: el ESP32 solo necesita salir a internet |
 | Prueba con la placa real y corte de WiFi | ⏳ Pendiente |
-| Servidor mjvirtual (`huerto.mjvirtual.cl`) | 🟡 Repo listo; falta el DNS y ejecutar la guía [DESPLIEGUE_MJVIRTUAL.md](DESPLIEGUE_MJVIRTUAL.md) |
+| Evaluación del modelo (CQ-10 a CQ-13) | ⏳ Faltan semanas de lecturas reales: `tools/evaluar_tendencia.py` |
+| Rangos por zona | ⏳ Valores de ejemplo: confirmar con fichas INIA/INDAP |
 
 ## Servicios en Docker (`central/docker-compose.yml`)
 
@@ -79,7 +84,10 @@ docker compose --profile test stop mariadb_test   # apagar la BD de tests
 - **En `config.h` ya están** `API_URL` y `API_TOKEN`. **Faltan** `WIFI_SSID`, `WIFI_PASS` y
   `SUELO_MV_MOJADO`.
 
-## Próximos pasos (en orden)
+## Próximos pasos del equipo de desarrollo (PC, en orden)
+
+> Esta lista es del montaje inicial en el PC. Hoy el equipo central en uso es el servidor; los
+> pasos del firmware y la calibración siguen vigentes.
 
 1. Completar `WIFI_SSID` y `WIFI_PASS` en `firmware/nodo/config.h`.
 2. Cambiar la red a Privada y crear la regla del firewall (sección Red).
@@ -93,7 +101,31 @@ docker compose --profile test stop mariadb_test   # apagar la BD de tests
 8. Hacer commit de los cambios.
 9. Más adelante: servidor con HTTPS y `API_CA_CERT` (README, sección 7).
 
-## Servidor mjvirtual (preparado el 27-11-2026)
+## Servidor mjvirtual: en marcha
+
+**Actualización del 27-11-2026 (commit `c7559f1`)**, con el orden de la guía (sección 3 de
+[DESPLIEGUE_MJVIRTUAL.md](DESPLIEGUE_MJVIRTUAL.md)):
+
+1. `git pull` y `docker compose build web procesador`.
+2. Respaldo antes de migrar: `~/respaldos/huerto-antes-de-migrar-2026-11-27-2333.sql.gz` (18 KB).
+   Un primer intento quedó vacío (20 bytes) por correr `docker compose` fuera de `central/`; se
+   borró y se repitió.
+3. `docker compose up -d web` y `python -m comun.migrar`: se aplicaron 002, 003, 004, 005, 006 y 007.
+4. `docker compose up -d procesador`: los 4 servicios quedaron «Up».
+
+**Verificado desde fuera (HTTPS):**
+- `/`, `/proyecto`, el logo y `/api/tendencias` respondían 200 (antes de pasar la presentación a `/`);
+- `/api/clima/actual` entrega datos de Open-Meteo para La Pintana con `estado: ok`;
+- la Cama A tiene tendencia calculada. El 27-11 a las 23:40 decía «Subiendo», +1,1 puntos por hora
+  en 6 h: revisar si hubo riego o si es la sonda sin calibrar.
+
+**Por revisar:**
+- en los registros del procesador, que aparezcan «Agregados recalculados» y «Clima de referencia
+  guardado», y ningún `ERROR`;
+- variables opcionales del `.env` del servidor: `PILOTO_CORREO` (formulario de `/proyecto`) y
+  `EXPORT_TOKEN` (exportación desde scripts).
+
+### Preparación del servidor (27-11-2026)
 
 - **Ya está en el repo:**
   - el `.env` del servidor se genera con `python3 despliegue/crear_env.py --servidor`;
@@ -107,11 +139,8 @@ docker compose --profile test stop mariadb_test   # apagar la BD de tests
   - el firmware con `https://huerto.mjvirtual.cl` + `CA_LETS_ENCRYPT` compila;
   - la cadena TLS de `asistente.mjvirtual.cl` valida con solo esos dos certificados raíz;
   - pasan 166 tests.
-- **Falta:**
-  1. el registro DNS `A huerto → 216.185.51.164` (hoy no existe);
-  2. commit + push;
-  3. los pasos 1.1 a 1.6 de la guía en el VPS;
-  4. el token del servidor en `config.h`.
+- **Hecho después:** el registro DNS, el HTTPS con certbot y la instalación en el VPS (la Cama A ya
+  envía lecturas al servidor).
 
 ## Observaciones
 

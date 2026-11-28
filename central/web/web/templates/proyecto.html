@@ -35,7 +35,7 @@
 
   <header class="cabecera">
     <div class="contenedor cabecera-fila">
-      <a class="emblema" href="{{ url_for('tablero.proyecto') }}">
+      <a class="emblema" href="{{ url_for('tablero.inicio') }}">
         <img src="{{ url_for('static', filename='img/logo-smartyuschamau-96.webp') }}" alt="" width="48" height="48">
         <span><strong>smartYusChaMau</strong><small>Colegio Marista Marcelino Champagnat</small></span>
       </a>
@@ -59,13 +59,16 @@
           <p class="bajada"><strong>smartYusChaMau</strong> traduce la humedad del suelo, la temperatura y las horas
             de luz en alertas simples que nuestros estudiantes entienden en segundos, alivia la carga de los
             docentes y protege los cultivos frente al clima extremo de la Región Metropolitana.</p>
-          <a class="cta cta-grande" href="#sumate">Quiero sumarme al piloto del colegio {{ icono('flecha') }}</a>
+          <div class="acciones-hero">
+            <a class="cta cta-grande" href="#sumate">Quiero sumarme al piloto del colegio {{ icono('flecha') }}</a>
+            <a class="enlace-secundario" href="{{ url_for('tablero.tablero') }}">{{ icono('pantalla') }} Ver las camas en vivo</a>
+          </div>
           <p class="micro">Tecnología de bajo costo · Sencillez marista al servicio del aprendizaje</p>
         </div>
 
         <div class="simulador" aria-labelledby="simulador-titulo">
           <p class="simulador-etiqueta" id="simulador-titulo">Así se ve una cama en la pantalla del huerto
-            <span>(simulación)</span></p>
+            <span>(simulación · <a href="{{ url_for('tablero.tablero') }}">ver las camas reales</a>)</span></p>
           <div class="simulador-botones" role="tablist" aria-label="Elige un estado de la cama">
             <button type="button" role="tab" data-estado="verde" aria-selected="true">Todo bien</button>
             <button type="button" role="tab" data-estado="rojo" aria-selected="false">Revisar</button>

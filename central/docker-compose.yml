@@ -6,7 +6,8 @@
 #   docker compose up -d
 #
 # Servicios: mosquitto (broker), mariadb (BD local), procesador (reglas y alertas)
-# y web (tablero en http://IP_DE_LA_PI:8080, kiosco en http://localhost:8080/?kiosco=1).
+# y web (inicio en http://IP_DE_LA_PI:8080, camas en /tablero, kiosco en
+# http://localhost:8080/tablero?kiosco=1; la dirección antigua /?kiosco=1 también sirve).
 #
 # En el servidor (detrás de nginx) se publica solo en localhost, desde el .env:
 #   WEB_ESCUCHA=127.0.0.1  WEB_PUERTO=18020  MQTT_ESCUCHA=127.0.0.1

@@ -4,15 +4,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block titulo %}Huerto Inteligente{% endblock %}</title>
-  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+  <title>{% block titulo %}smartYusChaMau · Huerto Inteligente{% endblock %}</title>
+  <link rel="icon" type="image/webp" href="{{ url_for('static', filename='img/logo-smartyuschamau-96.webp') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/huerto.css') }}">
 </head>
 <body data-zona="{{ zona_horaria }}" {% block atributos_body %}{% endblock %}>
   <header class="barra">
-    <a class="marca" href="{{ url_for('tablero.tablero') }}">
-      <img src="{{ url_for('static', filename='img/logo-smartyuschamau-96.webp') }}" alt="" width="36" height="36">
-      Huerto Inteligente</a>
+    <a class="marca" href="{{ url_for('tablero.inicio') }}">
+      <img src="{{ url_for('static', filename='img/logo-smartyuschamau-96.webp') }}" alt="" width="40" height="40">
+      <span><strong>smartYusChaMau</strong><small>Huerto Inteligente · Colegio Marista Marcelino Champagnat</small></span></a>
     <p id="estado-central" class="estado-central" role="status" hidden></p>
     <time id="reloj" class="reloj" aria-label="Hora actual"></time>
     {% block navegacion %}

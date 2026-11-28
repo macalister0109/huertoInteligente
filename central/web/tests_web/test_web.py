@@ -22,7 +22,7 @@ MIN = timedelta(minutes=1)
 
 def test_paginas_y_archivos_locales(cliente, datos):
     cama = datos.cama("cama-a", "Cama A")
-    r = cliente.get("/")
+    r = cliente.get("/tablero")
     assert r.status_code == 200 and "Huerto Inteligente" in r.get_data(as_text=True)
     assert "script-src 'self'" in r.headers["Content-Security-Policy"]
     # Chart.js se sirve desde la Pi (sin internet)
@@ -32,8 +32,11 @@ def test_paginas_y_archivos_locales(cliente, datos):
 
 
 def test_modo_kiosco(cliente):
-    assert 'data-kiosco="1"' in cliente.get("/?kiosco=1").get_data(as_text=True)
-    assert 'data-kiosco="0"' in cliente.get("/").get_data(as_text=True)
+    assert 'data-kiosco="1"' in cliente.get("/tablero?kiosco=1").get_data(as_text=True)
+    assert 'data-kiosco="0"' in cliente.get("/tablero").get_data(as_text=True)
+    # La pantalla del huerto sigue entrando por la dirección anterior
+    r = cliente.get("/?kiosco=1")
+    assert r.status_code == 302 and r.headers["Location"].endswith("/tablero?kiosco=1")
 
 
 # =========================================================================
