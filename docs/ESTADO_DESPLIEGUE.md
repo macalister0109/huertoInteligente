@@ -19,8 +19,8 @@ commit `c7559f1`
 | Clima exterior de referencia (Open-Meteo) | ✅ Responde con `estado: ok` desde el servidor |
 | Tendencias y predicción (RF-15) | ✅ Se calculan; alerta preventiva **desactivada** (por defecto) |
 | Tests automáticos | ✅ 393 de 393 en verde (pytest, en el PC) |
-| Firmware del nodo | ✅ La placa envía lecturas al servidor (la Cama A en https://huerto.mjvirtual.cl, 27-11-2026) · ⚠️ marca humedad 100 %: falta calibrar |
-| Calibración de la sonda en agua | ⏳ Pendiente (`SUELO_MV_MOJADO = -1`) |
+| Firmware del nodo | ✅ La placa envía lecturas al servidor (la Cama A en https://huerto.mjvirtual.cl, 27-11-2026; seq 896, llegan en unos 3 s) |
+| Calibración de la sonda | ⚠️ Calibrada (seco 3160 mV, mojado 2042 mV), pero en la cama marca 1568 mV: menos que el «mojado», así que queda en el tope de 100 %. Recalibrar el «mojado» con la sonda en la tierra de la cama saturada (`CAL` → `MOJADO`) |
 | Red (firewall y perfil privado del PC) | ➖ Ya no hace falta con el servidor: el ESP32 solo necesita salir a internet |
 | Prueba con la placa real y corte de WiFi | ⏳ Pendiente |
 | Evaluación del modelo (CQ-10 a CQ-13) | ⏳ Faltan semanas de lecturas reales: `tools/evaluar_tendencia.py` |
