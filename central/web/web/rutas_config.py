@@ -16,7 +16,7 @@ from functools import wraps
 from flask import (Blueprint, abort, flash, redirect, render_template, request, session,
                    url_for)
 
-from comun import ajustes
+from comun import ajustes, calibracion
 from comun.analitica.proceso import recalcular
 from comun.clima import DESACTUALIZADO, NO_CONFIGURADO, OK
 from comun.clima.proveedores import nombres as nombres_proveedores
@@ -99,6 +99,10 @@ def inicio():
         proveedores=_estado_proveedores(vigentes),
         zonas=consultas.zonas(conn),
         rangos_zona=consultas.rangos_por_zona(conn),
+        mv_actuales={c["id"]: calibracion.mv_actual(conn, c["id"])
+                     for c in consultas.camas(conn, solo_activas=False)},
+        porcentaje_cal=calibracion.porcentaje,
+        calibracion_de=calibracion.de_cama,
     )
 
 
@@ -173,6 +177,68 @@ def guardar_cama(cama_id: int):
         contexto().difusor.avisar_configuracion(cama_id)
         flash(f"Cambios guardados en {valores['nombre']}.", "ok")
     return redirect(url_for("config.inicio") + f"#cama-{cama_id}")
+
+
+@bp.post("/camas/<int:cama_id>/calibracion")
+@requiere_docente
+def guardar_calibracion(cama_id: int):
+    """Calibración de la sonda de suelo en el servidor (comun/calibracion.py).
+
+    accion = guardar | seco_actual | mojado_actual | quitar. «…_actual» usa
+    los mV de ahora (promedio de los últimos minutos) para ese punto.
+    Con «recalcular» marcado, la calibración se aplica también al historial.
+    """
+    conn, ctx = bd(), contexto()
+    cama = consultas.cama(conn, cama_id)
+    if cama is None:
+        abort(404)
+    destino = url_for("config.inicio") + f"#calibracion-{cama_id}"
+    accion = request.form.get("accion", "guardar")
+    seco, mojado = request.form.get("cal_seco_mv", ""), request.form.get("cal_mojado_mv", "")
+    if accion in ("seco_actual", "mojado_actual"):
+        actual = calibracion.mv_actual(conn, cama_id)
+        if actual is None:
+            flash(f"{cama['nombre']}: todavía no hay lecturas con mV para usar.", "error")
+            return redirect(destino)
+        if accion == "seco_actual":
+            seco = str(actual["mv"])
+        else:
+            mojado = str(actual["mv"])
+        flash(f"{cama['nombre']}: se usó la lectura actual, {actual['mv']} mV "
+              f"(promedio de {actual['lecturas']} lecturas).", "ok")
+    if accion == "quitar":
+        cal, errores = None, []
+    else:
+        cal, errores = calibracion.validar(seco, mojado)
+    if errores:
+        _mostrar_errores(errores, f"Calibración de {cama['nombre']}")
+        return redirect(destino)
+
+    ahora = ctx.reloj()
+    calibracion.guardar(conn, cama_id, cal, ahora)
+    cambiadas = None
+    if request.form.get("recalcular"):
+        cambiadas = (calibracion.recalcular_lecturas(conn, cama_id, cal) if cal
+                     else calibracion.restaurar_lecturas(conn, cama_id))
+    conn.commit()
+    if cambiadas is not None:
+        # Agregados, calidad y riegos salen de suelo_prom: se recalculan todos los días
+        primera = calibracion.primera_lectura(conn, cama_id)
+        if primera is not None:
+            dia = lambda t: t.replace(tzinfo=timezone.utc).astimezone(ctx.zona).date()
+            recalcular(conn, ajustes.config_vigente(conn, ctx.cfg.bd), dia(primera), dia(ahora),
+                       ahora, cama_id)
+    ctx.difusor.avisar_configuracion(cama_id)     # estado y tarjeta con el % nuevo
+
+    if cal:
+        texto = (f"Calibración de {cama['nombre']} guardada: seco {cal.seco_mv} mV = 0 %, "
+                 f"mojado {cal.mojado_mv} mV = 100 %.")
+    else:
+        texto = f"{cama['nombre']}: sin calibración en el servidor; se usa el % que envía la placa."
+    if cambiadas is not None:
+        texto += f" Historial actualizado: {cambiadas} lecturas cambiaron."
+    flash(texto, "ok")
+    return redirect(destino)
 
 
 @bp.post("/cultivos")

@@ -67,6 +67,9 @@ CREATE TABLE IF NOT EXISTS camas (
     temp_min       DECIMAL(5,2) NULL,
     temp_max       DECIMAL(5,2) NULL,
     horas_luz_min  DECIMAL(4,2) NULL,
+    cal_seco_mv    SMALLINT UNSIGNED NULL COMMENT 'mV de la sonda en suelo seco o al aire (0 %)',
+    cal_mojado_mv  SMALLINT UNSIGNED NULL COMMENT 'mV de la sonda en suelo saturado (100 %)',
+    cal_actualizada_en DATETIME NULL COMMENT 'UTC: último cambio de la calibración',
     activa         TINYINT(1)   NOT NULL DEFAULT 1,
     creada_en      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
@@ -80,7 +83,8 @@ CREATE TABLE IF NOT EXISTS camas (
     CONSTRAINT ck_camas_temp    CHECK (temp_min    IS NULL OR temp_max    IS NULL OR temp_min    <= temp_max),
     CONSTRAINT ck_camas_hum_0_100 CHECK ((humedad_min IS NULL OR humedad_min BETWEEN 0 AND 100)
                                      AND (humedad_max IS NULL OR humedad_max BETWEEN 0 AND 100)),
-    CONSTRAINT ck_camas_luz     CHECK (horas_luz_min IS NULL OR horas_luz_min BETWEEN 0 AND 24)
+    CONSTRAINT ck_camas_luz     CHECK (horas_luz_min IS NULL OR horas_luz_min BETWEEN 0 AND 24),
+    CONSTRAINT ck_camas_calibracion CHECK (cal_seco_mv IS NULL OR cal_mojado_mv IS NULL OR cal_seco_mv > cal_mojado_mv)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -------------------------------------------------------------
@@ -493,4 +497,4 @@ CREATE TABLE IF NOT EXISTS migraciones (
 INSERT IGNORE INTO migraciones (nombre) VALUES
     ('001_api_nodos.sql'), ('002_configuracion_huerto.sql'), ('003_clima_referencia.sql'),
     ('004_calidad_agregados.sql'), ('005_eventos_riego.sql'),
-    ('006_tendencias.sql'), ('007_zonas.sql');
+    ('006_tendencias.sql'), ('007_zonas.sql'), ('008_calibracion_suelo.sql');

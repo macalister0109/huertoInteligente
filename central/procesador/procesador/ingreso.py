@@ -21,6 +21,7 @@ from typing import Optional
 
 import pymysql
 
+from comun import calibracion
 from comun.config import Config
 
 from . import repositorio as repo
@@ -62,7 +63,7 @@ def guardar_lectura(conn, nodo_id: str, payload, ahora: datetime, cfg: Config) -
     cama = repo.obtener_o_crear_cama(conn, nodo_id)
     fila_anterior = repo.lectura_anterior(conn, cama["id"], datos.medido_en)
     anterior = valores_anteriores_desde_fila(fila_anterior) if fila_anterior else None
-    lectura = validar(datos, anterior, ahora, cfg)
+    lectura = validar(datos, anterior, ahora, cfg, calibracion.de_cama(cama))
 
     try:
         lectura_id = repo.insertar_lectura(conn, cama["id"], lectura, ahora)

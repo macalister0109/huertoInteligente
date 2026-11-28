@@ -27,6 +27,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Optional
 
+from comun.calibracion import Calibracion, porcentaje
 from comun.config import Config
 
 # Rangos fijos (no dependen del sensor de aire instalado)
@@ -166,7 +167,11 @@ def _fmt(valor: Any) -> str:
 
 
 def validar(datos: DatosLectura, anterior: Optional[ValoresAnteriores],
-            recibido_en: datetime, cfg: Config) -> LecturaValidada:
+            recibido_en: datetime, cfg: Config,
+            calibracion: Optional[Calibracion] = None) -> LecturaValidada:
+    """`calibracion`: la de la cama (comun/calibracion.py). Si viene y la
+    lectura trae mV válidos, el % de suelo se calcula desde los mV y no se usa
+    el % del nodo (que queda igual en suelo_detalle)."""
     invalidos: dict[str, dict] = {}
     detalles: list[str] = []
 
@@ -200,6 +205,14 @@ def validar(datos: DatosLectura, anterior: Optional[ValoresAnteriores],
     hum_aire = en_rango("hum_aire", datos.hum_aire, "hum_aire")
     lux = en_rango("lux", datos.lux, "lux")
     suelo_mv = en_rango("suelo_mv", datos.suelo_mv, "suelo_mv")
+
+    # --- Calibración de la cama en el servidor (una sola sonda con mV) ---
+    if calibracion is not None and suelo_mv is not None and len(datos.suelo or []) <= 1:
+        if "suelo_sonda_1" in invalidos:
+            # el % del nodo venía malo, pero los mV sirven: se usan los mV
+            invalidos.pop("suelo_sonda_1")
+            detalles[:] = [d for d in detalles if not d.startswith("suelo_sonda_1")]
+        suelo_prom = porcentaje(suelo_mv, calibracion)
 
     # --- Saltos imposibles respecto de la lectura anterior en el tiempo ---
     if anterior is not None:

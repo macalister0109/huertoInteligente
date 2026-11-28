@@ -82,6 +82,43 @@
       Mostrar esta cama en el tablero</label>
     <button type="submit">Guardar {{ cama.nombre }}</button>
   </form>
+
+  {% set cal = calibracion_de(cama) %}
+  {% set actual = mv_actuales.get(cama.id) %}
+  <form id="calibracion-{{ cama.id }}" method="post"
+        action="{{ url_for('config.guardar_calibracion', cama_id=cama.id) }}" class="ficha-config">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <fieldset>
+      <legend>Calibración de la sonda de suelo de {{ cama.nombre }}</legend>
+      <p class="ayuda">El servidor calcula el % de humedad desde los milivolts (mV) de la sonda, así
+        que puedes recalibrar sin conectar la placa. En esta sonda, <strong>más agua = menos mV</strong>.
+        «Seco» es la sonda en tierra seca o al aire (0 %) y «mojado», en la tierra de la cama
+        saturada (100 %). Si dejas los dos vacíos, se usa el % que calcula la placa.</p>
+      <p class="ayuda">
+        {% if actual %}Ahora la sonda marca <strong>{{ actual.mv }} mV</strong>
+          (promedio de {{ actual.lecturas }} lecturas){% if cal %}, que con esta calibración es
+          <strong>{{ '%.1f'|format(porcentaje_cal(actual.mv, cal)) }} %</strong>{% endif %}.
+        {% else %}Todavía no hay lecturas con mV.{% endif %}
+        {% if cama.cal_actualizada_en %}Último cambio: {{ iso(cama.cal_actualizada_en) }}.{% endif %}
+      </p>
+      <div class="fila-campos">
+        <label><span>Seco (0 %), mV</span>
+          <input name="cal_seco_mv" inputmode="numeric" value="{{ cama.cal_seco_mv if cama.cal_seco_mv is not none else '' }}"></label>
+        <label><span>Mojado (100 %), mV</span>
+          <input name="cal_mojado_mv" inputmode="numeric" value="{{ cama.cal_mojado_mv if cama.cal_mojado_mv is not none else '' }}"></label>
+      </div>
+      <label class="casilla"><input type="checkbox" name="recalcular" value="1" checked>
+        Aplicar también a las lecturas ya guardadas (historial, gráficos, riegos y tendencia)</label>
+      <button type="submit" name="accion" value="guardar">Guardar calibración</button>
+      <button type="submit" name="accion" value="mojado_actual" class="boton-secundario"
+              {% if not actual %}disabled{% endif %}>Usar la lectura actual como «mojado»</button>
+      <button type="submit" name="accion" value="seco_actual" class="boton-secundario"
+              {% if not actual %}disabled{% endif %}>Usar la lectura actual como «seco»</button>
+      {% if cal %}
+      <button type="submit" name="accion" value="quitar" class="boton-secundario">Quitar calibración</button>
+      {% endif %}
+    </fieldset>
+  </form>
   {% else %}
   <p class="vacio">Todavía no hay camas. Aparecen solas cuando un equipo envía su primera medición.</p>
   {% endfor %}

@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
+from comun.calibracion import Calibracion
 from comun.config import Config
 from procesador.validacion import (MensajeInvalido, ValoresAnteriores, interpretar, validar,
                                    valores_anteriores_desde_fila)
@@ -188,3 +189,50 @@ def test_solo_mv_sin_porcentaje_no_es_lectura_util():
     lv = validada_esp32(suelo_pct=None, temp=None, hum_aire=None)
     assert not lv.valida
     assert lv.suelo_mv == 2350      # pero los mV quedan guardados para calibrar
+
+
+# ---------------------------------------------------------------------------
+# Calibración de la cama en el servidor: el % sale de los mV
+# ---------------------------------------------------------------------------
+
+CAL_CAMA_A = Calibracion(seco_mv=3160, mojado_mv=980)
+
+
+def calibrada_esp32(**cambios):
+    return validar(interpretar("cama-a", mensaje_esp32(**cambios)), None, T0, CFG, CAL_CAMA_A)
+
+
+def test_con_calibracion_el_porcentaje_sale_de_los_mv():
+    lv = calibrada_esp32(suelo_pct=100, suelo_mv=1437)
+    assert lv.suelo_prom == 79.0
+    assert lv.suelo_detalle == [100]       # el % de la placa se guarda tal como llegó
+    assert lv.valida and not lv.invalidos
+
+
+def test_con_calibracion_y_placa_sin_calibrar_igual_hay_porcentaje():
+    lv = calibrada_esp32(suelo_pct=None, suelo_mv=2070)
+    assert lv.suelo_prom == 50.0 and not lv.invalidos
+
+
+def test_con_calibracion_un_porcentaje_malo_de_la_placa_no_importa():
+    lv = calibrada_esp32(suelo_pct=-1, suelo_mv=2070)
+    assert lv.suelo_prom == 50.0
+    assert not lv.invalidos and lv.motivo is None
+
+
+def test_con_calibracion_y_mv_imposible_se_usa_el_porcentaje_de_la_placa():
+    lv = calibrada_esp32(suelo_pct=42, suelo_mv=9999)
+    assert lv.suelo_prom == 42.0 and "suelo_mv" in lv.invalidos
+
+
+def test_con_calibracion_un_nodo_de_varias_sondas_sigue_con_su_promedio():
+    datos = interpretar("cama-a", json.dumps({
+        "seq": 1, "medido_en": "2026-11-26T12:00:00Z", "suelo": [40, 50], "suelo_mv": 2070}))
+    assert validar(datos, None, T0, CFG, CAL_CAMA_A).suelo_prom == 45.0
+
+
+def test_con_calibracion_se_sigue_detectando_la_bajada_imposible():
+    anterior = ValoresAnteriores(medido_en=T0 - timedelta(minutes=1), suelo_prom=95.0)
+    datos = interpretar("cama-a", mensaje_esp32(suelo_mv=3000))    # 7,3 %: bajó 88 pts en 1 min
+    lv = validar(datos, anterior, T0, CFG, CAL_CAMA_A)
+    assert lv.suelo_prom is None and lv.invalidos["suelo"]["tipo"] == "salto"

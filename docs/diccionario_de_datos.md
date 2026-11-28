@@ -49,7 +49,7 @@ unida con `calidad_lecturas`.
 | seq | entero | — | nodo | ≥ 0 | Contador de lecturas del nodo. Si un `seq` se repite con otra hora, el contador se reinició. |
 | medido_en_utc | fecha y hora | UTC | reloj del nodo (NTP) | — | Cuándo se midió. |
 | recibido_en_utc | fecha y hora | UTC | equipo central | — | Cuándo llegó. Si es mucho más tarde que `medido_en_utc`, venía del buffer del nodo (corte de WiFi). |
-| suelo_pct | decimal | % calibrado | sonda YL-69 | 0 a 100 | Promedio de las sondas válidas. Vacío si se descartó. |
+| suelo_pct | decimal | % calibrado | sonda YL-69 | 0 a 100 | Promedio de las sondas válidas. Si la cama tiene calibración en el servidor (`camas.cal_seco_mv` y `cal_mojado_mv`), se calcula desde `suelo_mv`. Vacío si se descartó. |
 | suelo_mv | entero | mV | ADC del ESP32 | 0 a 3600 | Voltaje crudo de la sonda (sirve para calibrar y para ver la deriva). |
 | temp_c | decimal | °C | DHT11 | 0 a 50 | Temperatura del aire. Vacía si se descartó. |
 | hum_aire_pct | decimal | % | DHT11 | 0 a 100 | Humedad relativa del aire. |
@@ -150,6 +150,7 @@ Una instantánea por hora. Tabla `clima_referencia`; la vista `v_clima_hora` la 
 | `zonas_climaticas` | Zonas `norte`, `centro` y `sur`, con su descripción. |
 | `rangos_cultivo_zona` | Rango ideal de cada cultivo en cada zona. Son valores de **ejemplo** (`por_confirmar = 1`) que hay que confirmar con las fichas de INIA / INDAP. Una fila vacía significa que el cultivo usa su rango genérico en esa zona. |
 | `v_camas_zona` (vista) | Zona efectiva de cada cama: la suya o, si no tiene, la del huerto (por defecto `centro`). También entrega el rango del cultivo en esa zona. Cada campo del rango de una cama se toma en este orden: **el de la cama, luego el del cultivo en la zona y por último el del cultivo genérico**. |
+| `camas.cal_seco_mv`, `camas.cal_mojado_mv` | Calibración de la sonda de suelo en el servidor (migración 008), editable en `/configuracion`. Con los dos puntos, el % se calcula en el equipo central: `(seco − mV) × 100 / (seco − mojado)`, acotado a 0–100. Vacíos = se usa el % que envía la placa. `lecturas.suelo_detalle` siempre guarda el % de la placa tal como llegó. |
 | `tiempos_tendencia` | CQ-13: cuánto tardó cada predicción (`duracion_ms`), con su estado, las horas estimadas, la pendiente y el R². |
 | `luz_diaria` | Horas de luz por día y cama (HU-04). |
 | `eventos_alerta`, `latencias_pantalla` | Mediciones de CQ-02 y CQ-03. |

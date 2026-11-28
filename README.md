@@ -197,6 +197,22 @@ La sonda entrega milivolts (mV): **más agua = menos mV**. Hay que medir dos pun
 
 Mientras falte `SUELO_MV_MOJADO`, la OLED muestra `CAL` junto al suelo y se envían solo los mV.
 
+### Calibrar desde la web, sin conectar la placa
+
+Como el nodo envía siempre los mV, el equipo central puede calcular el % por su cuenta. En
+`/configuracion`, cada cama tiene el recuadro **«Calibración de la sonda de suelo»**:
+
+- escribe los mV de «seco» y «mojado», o usa **«Usar la lectura actual como mojado/seco»** (promedia
+  las lecturas de los últimos minutos). Para el «mojado», deja la sonda en la tierra de la cama
+  saturada unos 5 minutos antes de apretar el botón;
+- con **«Aplicar también a las lecturas ya guardadas»** marcado, se recalculan el historial, los
+  gráficos, los agregados, los riegos y la tendencia;
+- **«Quitar calibración»** vuelve al % que envía la placa.
+
+La calibración de la web solo cambia lo que se guarda y se muestra en el sitio. La OLED y el LED
+del nodo siguen usando `SUELO_MV_SECO` y `SUELO_MV_MOJADO` de `config.h`: para que coincidan, copia
+los mismos valores en `config.h` y vuelve a subir el programa cuando puedas.
+
 ---
 
 ## 6. Comprobar que las lecturas llegan
