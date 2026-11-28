@@ -21,3 +21,8 @@ tools/salidas/
 # Firmware del nodo (Arduino)
 firmware/nodo/config.h
 firmware/nodo/build/
+
+# Datos sintéticos: se regeneran con tools/generar_sinteticos.py (semilla fija)
+analisis/datos_sinteticos/
+# Checkpoints de Jupyter
+.ipynb_checkpoints/

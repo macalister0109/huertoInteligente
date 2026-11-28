@@ -86,7 +86,8 @@ def calcular_estado(configurada: bool, hay_lecturas: bool, sin_datos: Sequence[s
         return Estado(GRIS, mensajes.SIN_LECTURAS)
     if sin_datos:
         return Estado(GRIS, mensajes.sensores_sin_conexion(sin_datos), tuple(sin_datos))
-    de_rango = [a for a in alertas_abiertas if a.tipo != "sensor_sin_datos"]
+    # La alerta preventiva de tendencia no pone la cama en rojo: no está fuera de rango
+    de_rango = [a for a in alertas_abiertas if a.tipo not in ("sensor_sin_datos", "tendencia_secado")]
     if de_rango:
         items = _items_revisar(de_rango, rango)
         return Estado(ROJO, mensajes.revisar(items) if items else "Revisar")

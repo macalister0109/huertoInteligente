@@ -10,17 +10,12 @@ import json
 from datetime import date, datetime, timedelta
 from typing import Any, Optional
 
+from comun.rangos import SELECT_CAMA
+
 from .validacion import LecturaValidada
 
 # Columnas de la cama + las de su cultivo con prefijo, para rango_efectivo()
-_SELECT_CAMA = """
-    SELECT c.*, cu.nombre AS cultivo_nombre,
-           cu.humedad_min AS cultivo_humedad_min, cu.humedad_max AS cultivo_humedad_max,
-           cu.temp_min AS cultivo_temp_min, cu.temp_max AS cultivo_temp_max,
-           cu.horas_luz_min AS cultivo_horas_luz_min
-      FROM camas c
-      LEFT JOIN cultivos cu ON cu.id = c.cultivo_id
-"""
+_SELECT_CAMA = SELECT_CAMA      # cama + cultivo + zona (comun/rangos.py)
 
 # Una lectura válida "de un sensor" es una fila válida con esa columna no nula
 COLUMNA_SENSOR = {"suelo": "suelo_prom", "temperatura": "temp", "luz": "lux"}

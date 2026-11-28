@@ -50,7 +50,8 @@ def _min_menor_que_max(efectivos: dict, errores: list[str]) -> None:
             errores.append(f"El mínimo de {nombre} ({minimo:g}) es mayor que el máximo ({maximo:g}).")
 
 
-def validar_cama(form: Mapping[str, str], cultivos: dict[int, dict]) -> tuple[dict, list[str]]:
+def validar_cama(form: Mapping[str, str], cultivos: dict[int, dict],
+                 zonas: Optional[dict[int, dict]] = None) -> tuple[dict, list[str]]:
     errores: list[str] = []
     nombre = (form.get("nombre") or "").strip()
     if not 1 <= len(nombre) <= 60:
@@ -58,6 +59,14 @@ def validar_cama(form: Mapping[str, str], cultivos: dict[int, dict]) -> tuple[di
     zona = (form.get("zona_climatica") or "").strip() or None
     if zona and len(zona) > 60:
         errores.append("La zona puede tener hasta 60 letras.")
+    # Zona climática de la cama (vacío = la zona del huerto)
+    zona_id: Optional[int] = None
+    texto_zona = (form.get("zona_id") or "").strip()
+    if texto_zona:
+        if not texto_zona.isdigit() or (zonas is not None and int(texto_zona) not in zonas):
+            errores.append("La zona elegida no existe.")
+        else:
+            zona_id = int(texto_zona)
 
     cultivo_id: Optional[int] = None
     texto_cultivo = (form.get("cultivo_id") or "").strip()
@@ -74,9 +83,22 @@ def validar_cama(form: Mapping[str, str], cultivos: dict[int, dict]) -> tuple[di
                  for k, v in rangos.items()}
     _min_menor_que_max(efectivos, errores)
 
-    valores = {"nombre": nombre, "zona_climatica": zona, "cultivo_id": cultivo_id,
+    valores = {"nombre": nombre, "cultivo_id": cultivo_id,
                "activa": 1 if form.get("activa") else 0, **rangos}
+    if "zona_climatica" in form:           # texto libre anterior (formularios viejos)
+        valores["zona_climatica"] = zona
+    if "zona_id" in form:
+        valores["zona_id"] = zona_id
     return valores, errores
+
+
+def validar_rangos_zona(form: Mapping[str, str], prefijo: str) -> tuple[dict, list[str]]:
+    """Rangos de un cultivo en una zona. Campos «<prefijo>humedad_min», …"""
+    errores: list[str] = []
+    datos = {k[len(prefijo):]: v for k, v in form.items() if k.startswith(prefijo)}
+    rangos = _rangos(datos, errores)
+    _min_menor_que_max(rangos, errores)
+    return rangos, errores
 
 
 def validar_cultivo(form: Mapping[str, str], otros_nombres: set[str]) -> tuple[dict, list[str]]:

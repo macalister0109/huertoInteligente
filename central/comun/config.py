@@ -46,6 +46,24 @@ _VARIABLES = {
     "hum_aire_max_fisico": "HUM_AIRE_MAX_FISICO",
     "tendencia_activa": "TENDENCIA_ACTIVA",
     "sensores_requeridos": "SENSORES_REQUERIDOS",
+    "clima_proveedor": "CLIMA_PROVEEDOR",
+    "clima_lat": "CLIMA_LAT",
+    "clima_lon": "CLIMA_LON",
+    "clima_ttl_min": "CLIMA_TTL_MIN",
+    "dmc_estacion": "DMC_ESTACION",
+    "intervalo_lectura_s": "INTERVALO_LECTURA_S",
+    "hueco_lecturas_faltantes": "HUECO_LECTURAS_FALTANTES",
+    "pegado_horas_suelo": "PEGADO_HORAS_SUELO",
+    "pegado_horas_temp": "PEGADO_HORAS_TEMP",
+    "pegado_horas_hum_aire": "PEGADO_HORAS_HUM_AIRE",
+    "riego_umbral_pts": "RIEGO_UMBRAL_PTS",
+    "riego_ventana_min": "RIEGO_VENTANA_MIN",
+    "tendencia_pts_rapido": "TENDENCIA_PTS_RAPIDO",
+    "tendencia_pts_estable": "TENDENCIA_PTS_ESTABLE",
+    "tendencia_ventana_h": "TENDENCIA_VENTANA_H",
+    "tendencia_r2_min": "TENDENCIA_R2_MIN",
+    "tendencia_min_puntos": "TENDENCIA_MIN_PUNTOS",
+    "tendencia_horizonte_h": "TENDENCIA_HORIZONTE_H",
 }
 
 
@@ -91,6 +109,40 @@ class Config:
     # cama en gris (HU-05). El prototipo 1 no tiene sensor de luz: no cuenta.
     # Cuando se agregue (prototipo 2): SENSORES_REQUERIDOS=suelo,temperatura,luz
     sensores_requeridos: str = "suelo,temperatura"
+    # Clima externo de referencia. Proveedor, latitud y longitud son solo los
+    # valores POR DEFECTO: el docente los cambia en /configuracion (tabla
+    # configuracion_huerto). Por defecto: zona sur de Santiago (San Ramón / La Pintana).
+    clima_proveedor: str = "open-meteo"
+    clima_lat: float = -33.54
+    clima_lon: float = -70.64
+    clima_ttl_min: float = 20.0
+    dmc_estacion: str = ""          # código nacional de la EMA (solo proveedor DMC)
+    # Capa de datos para análisis (marcas de calidad y agregados)
+    intervalo_lectura_s: float = 30.0       # cada cuánto mide el nodo (INTERVALO_MS del firmware)
+    hueco_lecturas_faltantes: int = 2       # «hueco» = faltan MÁS de estas lecturas seguidas
+    # «Sensor pegado»: el mismo valor exacto por más de estas horas. El DHT11
+    # entrega enteros, así que temperatura y humedad del aire repiten más.
+    pegado_horas_suelo: float = 3.0
+    pegado_horas_temp: float = 6.0
+    pegado_horas_hum_aire: float = 6.0
+    # Riego detectado: la humedad del suelo sube al menos esto en la ventana
+    riego_umbral_pts: float = 10.0
+    riego_ventana_min: float = 30.0
+    # Etiquetas de la pendiente del suelo (puntos por hora, valores de ejemplo):
+    # bajo −RAPIDO «Secándose rápido»; hasta −ESTABLE «Secándose lento»;
+    # entre ±ESTABLE «Estable»; sobre +ESTABLE «Subiendo»
+    tendencia_pts_rapido: float = 1.0
+    tendencia_pts_estable: float = 0.2
+    # Predicción del tiempo hasta el mínimo (RF-15). Ventana, R² y alerta
+    # (TENDENCIA_ACTIVA) también se editan en /configuracion.
+    tendencia_ventana_h: float = 6.0
+    tendencia_r2_min: float = 0.6
+    tendencia_min_puntos: int = 12
+    tendencia_horizonte_h: float = 6.0
+
+    def pegado_horas(self, variable: str) -> float:
+        return {"suelo": self.pegado_horas_suelo, "temp": self.pegado_horas_temp,
+                "hum_aire": self.pegado_horas_hum_aire}[variable]
 
     @property
     def lista_sensores_requeridos(self) -> tuple[str, ...]:

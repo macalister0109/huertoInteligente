@@ -8,14 +8,9 @@ from typing import Any, Iterator, Optional, Sequence
 
 import pymysql.cursors
 
-_SELECT_CAMA = """
-    SELECT c.*, cu.nombre AS cultivo_nombre,
-           cu.humedad_min AS cultivo_humedad_min, cu.humedad_max AS cultivo_humedad_max,
-           cu.temp_min AS cultivo_temp_min, cu.temp_max AS cultivo_temp_max,
-           cu.horas_luz_min AS cultivo_horas_luz_min
-      FROM camas c
-      LEFT JOIN cultivos cu ON cu.id = c.cultivo_id
-"""
+from comun.rangos import SELECT_CAMA
+
+_SELECT_CAMA = SELECT_CAMA      # cama + cultivo + zona (comun/rangos.py)
 
 _SELECT_ALERTA = """
     SELECT a.id, a.cama_id, c.nombre AS cama, c.nodo_id, a.tipo, a.variable, a.estado, a.mensaje,
@@ -61,7 +56,7 @@ def camas_con_cultivo(conn, cultivo_id: int) -> list[int]:
     return [f["id"] for f in _filas(conn, "SELECT id FROM camas WHERE cultivo_id = %s", (cultivo_id,))]
 
 
-CAMPOS_CAMA = ("nombre", "cultivo_id", "zona_climatica", "humedad_min", "humedad_max",
+CAMPOS_CAMA = ("nombre", "cultivo_id", "zona_climatica", "zona_id", "humedad_min", "humedad_max",
                "temp_min", "temp_max", "horas_luz_min", "activa")
 CAMPOS_CULTIVO = ("nombre", "humedad_min", "humedad_max", "temp_min", "temp_max",
                   "horas_luz_min", "tolera_sombra", "por_confirmar", "notas")
@@ -74,6 +69,41 @@ def actualizar_cama(conn, cama_id: int, valores: dict) -> None:
         cur.execute(f"UPDATE camas SET {asignaciones} WHERE id = %s",
                     [valores[c] for c in columnas] + [cama_id])
     conn.commit()
+
+
+# ---------------------------------------------------------------------------
+# Zonas climáticas
+# ---------------------------------------------------------------------------
+
+CAMPOS_RANGO_ZONA = ("humedad_min", "humedad_max", "temp_min", "temp_max", "horas_luz_min")
+
+
+def zonas(conn) -> list[dict]:
+    return _filas(conn, "SELECT * FROM zonas_climaticas ORDER BY id")
+
+
+def rangos_por_zona(conn) -> dict[tuple[int, int], dict]:
+    """(cultivo_id, zona_id) -> fila de rangos_cultivo_zona."""
+    return {(f["cultivo_id"], f["zona_id"]): f for f in _filas(conn, "SELECT * FROM rangos_cultivo_zona")}
+
+
+def guardar_rangos_zona(conn, cultivo_id: int, zona_id: int, valores: dict, por_confirmar: bool) -> None:
+    """Sin ningún valor se borra la fila: el cultivo usa su rango genérico en esa zona."""
+    with conn.cursor() as cur:
+        if all(valores.get(c) is None for c in CAMPOS_RANGO_ZONA):
+            cur.execute("DELETE FROM rangos_cultivo_zona WHERE cultivo_id = %s AND zona_id = %s",
+                        (cultivo_id, zona_id))
+            return
+        cur.execute(f"""INSERT INTO rangos_cultivo_zona
+                            (cultivo_id, zona_id, {', '.join(CAMPOS_RANGO_ZONA)}, por_confirmar)
+                        VALUES (%s, %s, {', '.join(['%s'] * len(CAMPOS_RANGO_ZONA))}, %s)
+                        ON DUPLICATE KEY UPDATE {', '.join(f'{c} = VALUES({c})' for c in CAMPOS_RANGO_ZONA)},
+                            por_confirmar = VALUES(por_confirmar)""",
+                    (cultivo_id, zona_id, *[valores.get(c) for c in CAMPOS_RANGO_ZONA], int(por_confirmar)))
+
+
+def camas_ids(conn) -> list[int]:
+    return [f["id"] for f in _filas(conn, "SELECT id FROM camas")]
 
 
 def guardar_cultivo(conn, cultivo_id: Optional[int], valores: dict) -> int:

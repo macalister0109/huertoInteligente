@@ -3,9 +3,14 @@
 {% block titulo %}Configuración — Huerto Inteligente{% endblock %}
 {% block clase_main %}configuracion{% endblock %}
 {% block navegacion %}
-<nav class="navegacion">
+{{ menu_principal('configuracion', 'navegacion') }}
+<nav class="navegacion" aria-label="Secciones de la configuración">
   <a href="#camas">Camas</a>
   <a href="#cultivos">Cultivos</a>
+  <a href="#zonas">Zonas</a>
+  <a href="#tendencia">Tendencia</a>
+  <a href="#clima">Clima exterior</a>
+  <a href="#datos">Datos</a>
   <a href="#incidencias">Problemas técnicos{% if incidencias %} ({{ incidencias|length }}){% endif %}</a>
   <form method="post" action="{{ url_for('config.salir') }}" class="en-linea">
     <button type="submit" class="boton-secundario">Salir</button>
@@ -13,13 +18,21 @@
 </nav>
 {% endblock %}
 
-{% macro campo_rango(nombre, etiqueta, valor, del_cultivo, unidad) %}
+{% macro campo_rango(nombre, etiqueta, valor, del_cultivo, unidad, origen='Del cultivo') %}
   <label>
     <span>{{ etiqueta }} ({{ unidad }})</span>
     <input name="{{ nombre }}" type="text" inputmode="decimal"
            value="{{ '' if valor is none else '%g'|format(valor) }}"
-           placeholder="{{ 'Del cultivo: %g'|format(del_cultivo) if del_cultivo is not none else 'Sin valor' }}">
+           placeholder="{{ (origen ~ ': %g')|format(del_cultivo) if del_cultivo is not none else 'Sin valor' }}">
   </label>
+{% endmacro %}
+
+{# Valor heredado de una cama: el del cultivo en su zona o, si no hay, el del cultivo #}
+{% macro campo_cama(cama, campo, etiqueta, unidad) %}
+  {% set de_zona = cama['zona_' ~ campo] %}
+  {{ campo_rango(campo, etiqueta, cama[campo],
+                 de_zona if de_zona is not none else cama['cultivo_' ~ campo], unidad,
+                 ('Zona ' ~ cama.zona_nombre) if de_zona is not none else 'Del cultivo') }}
 {% endmacro %}
 
 {% block contenido %}
@@ -27,9 +40,10 @@
 
 <section id="camas">
   <h2>Camas</h2>
-  <p class="ayuda">Elige el cultivo de cada cama. Si en tu zona los valores ideales son otros
-    (no es lo mismo el norte que el sur), escríbelos en «Rangos propios de esta cama».
-    Deja un casillero vacío para usar el valor del cultivo.</p>
+  <p class="ayuda">Elige el cultivo y la zona de cada cama. Cada valor ideal se toma, en este orden:
+    1) el que escribas en «Rangos propios de esta cama»; 2) el del cultivo en la zona de la cama
+    (ver <a href="#zonas">Zona climática</a>); 3) el del cultivo. Deja un casillero vacío para heredar
+    el valor (se muestra en gris).</p>
 
   {% for cama in camas %}
   <form id="cama-{{ cama.id }}" method="post" action="{{ url_for('config.guardar_cama', cama_id=cama.id) }}"
@@ -47,17 +61,21 @@
           {% endfor %}
         </select></label>
       <label><span>Zona climática</span>
-        <input name="zona_climatica" value="{{ cama.zona_climatica or '' }}" maxlength="60"
-               placeholder="Ej.: Valle central"></label>
+        <select name="zona_id">
+          <option value="">La del huerto ({{ (zonas|selectattr('codigo', 'equalto', clima.zona_huerto)|map(attribute='nombre')|first) or clima.zona_huerto }})</option>
+          {% for zona in zonas %}
+          <option value="{{ zona.id }}" {% if zona.id == cama.zona_id %}selected{% endif %}>{{ zona.nombre }}</option>
+          {% endfor %}
+        </select></label>
     </div>
     <fieldset>
       <legend>Rangos propios de esta cama (opcional)</legend>
       <div class="fila-campos">
-        {{ campo_rango('humedad_min', 'Humedad del suelo mínima', cama.humedad_min, cama.cultivo_humedad_min, '%') }}
-        {{ campo_rango('humedad_max', 'Humedad del suelo máxima', cama.humedad_max, cama.cultivo_humedad_max, '%') }}
-        {{ campo_rango('temp_min', 'Temperatura mínima', cama.temp_min, cama.cultivo_temp_min, '°C') }}
-        {{ campo_rango('temp_max', 'Temperatura máxima', cama.temp_max, cama.cultivo_temp_max, '°C') }}
-        {{ campo_rango('horas_luz_min', 'Horas de luz mínimas', cama.horas_luz_min, cama.cultivo_horas_luz_min, 'h') }}
+        {{ campo_cama(cama, 'humedad_min', 'Humedad del suelo mínima', '%') }}
+        {{ campo_cama(cama, 'humedad_max', 'Humedad del suelo máxima', '%') }}
+        {{ campo_cama(cama, 'temp_min', 'Temperatura mínima', '°C') }}
+        {{ campo_cama(cama, 'temp_max', 'Temperatura máxima', '°C') }}
+        {{ campo_cama(cama, 'horas_luz_min', 'Horas de luz mínimas', 'h') }}
       </div>
     </fieldset>
     <label class="casilla"><input type="checkbox" name="activa" value="1" {% if cama.activa %}checked{% endif %}>
@@ -95,6 +113,168 @@
     <button type="submit">{{ 'Guardar ' ~ cultivo.nombre if cultivo else 'Agregar cultivo' }}</button>
   </form>
   {% endfor %}
+</section>
+
+<section id="zonas">
+  <h2>Zona climática</h2>
+  <p class="ayuda">Los rangos ideales cambian según la zona: en el norte hace más calor y se evapora más
+    agua; en el sur es más fresco y lluvioso. Las camas sin zona propia usan la zona del huerto.</p>
+  <form method="post" action="{{ url_for('config.guardar_zona_huerto') }}" class="ficha-config">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <div class="fila-campos">
+      <label><span>Zona del huerto</span>
+        <select name="zona_huerto">
+          {% for zona in zonas %}
+          <option value="{{ zona.codigo }}" {% if zona.codigo == clima.zona_huerto %}selected{% endif %}>{{ zona.nombre }}</option>
+          {% endfor %}
+        </select></label>
+    </div>
+    <p class="ayuda">{% for zona in zonas %}<strong>{{ zona.nombre }}:</strong> {{ zona.descripcion }}{% if not loop.last %} · {% endif %}{% endfor %}</p>
+    <button type="submit">Guardar zona del huerto</button>
+  </form>
+
+  <p class="ayuda"><span class="etiqueta-advertencia">por confirmar</span> Los valores por zona son de
+    <strong>ejemplo</strong>: confírmalos con las fichas de cultivo de INIA / INDAP. Deja una fila vacía para
+    que el cultivo use sus valores generales en esa zona (se muestran en gris).</p>
+  {% for cultivo in cultivos %}
+  <form id="zonas-{{ cultivo.id }}" method="post" class="ficha-config"
+        action="{{ url_for('config.guardar_rangos_zona', cultivo_id=cultivo.id) }}">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <h3>{{ cultivo.nombre }} por zona</h3>
+    {% set ns = namespace(por_confirmar=false, hay=false) %}
+    <div class="tabla-desplazable">
+      <table class="tabla-resumen tabla-zonas">
+        <thead><tr><th scope="col">Zona</th><th scope="col">Humedad mín. (%)</th><th scope="col">Humedad máx. (%)</th>
+          <th scope="col">Temp. mín. (°C)</th><th scope="col">Temp. máx. (°C)</th><th scope="col">Luz mín. (h)</th></tr></thead>
+        <tbody>
+          {% for zona in zonas %}
+          {% set fila = rangos_zona.get((cultivo.id, zona.id)) %}
+          {% if fila %}{% set ns.hay = true %}{% if fila.por_confirmar %}{% set ns.por_confirmar = true %}{% endif %}{% endif %}
+          <tr>
+            <th scope="row">{{ zona.nombre }}</th>
+            {% for campo in ('humedad_min', 'humedad_max', 'temp_min', 'temp_max', 'horas_luz_min') %}
+            <td><input name="z{{ zona.id }}_{{ campo }}" type="text" inputmode="decimal" aria-label="{{ zona.nombre }}: {{ campo }}"
+                       value="{{ '' if not fila or fila[campo] is none else '%g'|format(fila[campo]) }}"
+                       placeholder="{{ '%g'|format(cultivo[campo]) if cultivo[campo] is not none else '' }}"></td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <label class="casilla"><input type="checkbox" name="por_confirmar" value="1"
+      {% if ns.por_confirmar or not ns.hay %}checked{% endif %}> Valores por confirmar (ejemplo)</label>
+    <button type="submit">Guardar {{ cultivo.nombre }} por zona</button>
+  </form>
+  {% endfor %}
+</section>
+
+<section id="tendencia">
+  <h2>Tendencia y riego</h2>
+  <p class="ayuda">El sistema mira cómo baja la humedad del suelo <strong>desde el último riego</strong>,
+    traza una recta y estima en cuántas horas llegaría al mínimo de la cama. Es una
+    <strong>estimación</strong>: solo se muestra cuando los datos siguen una línea clara.</p>
+  <form method="post" action="{{ url_for('config.guardar_tendencia') }}" class="ficha-config">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <div class="fila-campos">
+      <label><span>Horas de datos que mira (ventana)</span>
+        <input name="tendencia_ventana_h" type="text" inputmode="decimal" required
+               value="{{ '%g'|format(clima.tendencia_ventana_h) }}"></label>
+      <label><span>Qué tan clara debe ser la recta (R² mínimo, de 0 a 1)</span>
+        <input name="tendencia_r2_min" type="text" inputmode="decimal" required
+               value="{{ '%g'|format(clima.tendencia_r2_min) }}"></label>
+      <label><span>Subida que cuenta como riego (puntos en 30 min)</span>
+        <input name="riego_umbral_pts" type="text" inputmode="decimal" required
+               value="{{ '%g'|format(clima.riego_umbral_pts) }}"></label>
+    </div>
+    <input type="hidden" name="tendencia_activa" value="0">
+    <label class="casilla"><input type="checkbox" name="tendencia_activa" value="1"
+      {% if clima.tendencia_activa %}checked{% endif %}>
+      Avisar antes de que la cama se seque (aviso preventivo «Al ritmo actual llegaría al mínimo en unas X h»)</label>
+    <p class="ayuda">Por defecto: 6 horas, R² 0,6 y +10 puntos. Un R² más alto muestra menos estimaciones,
+      pero más confiables. Si cambias la subida que cuenta como riego, se vuelven a buscar los riegos de la
+      última semana.</p>
+    <button type="submit">Guardar tendencia</button>
+  </form>
+</section>
+
+<section id="clima">
+  <h2>Clima exterior (referencia)</h2>
+  <p class="ayuda">El tablero compara cada cama con el clima de la zona. Es solo una
+    <strong>referencia</strong> de las condiciones actuales, no un pronóstico. Si no hay internet,
+    el huerto sigue funcionando igual: solo falta este dato.</p>
+
+  <form method="post" action="{{ url_for('config.guardar_clima') }}" class="ficha-config">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <div class="fila-campos">
+      <label><span>Proveedor</span>
+        <select name="clima_proveedor">
+          {% for p in proveedores %}
+          <option value="{{ p.nombre }}" {% if p.nombre == clima.clima_proveedor %}selected{% endif %}>
+            {{ p.titulo }}{% if p.motivo %} — no configurado{% endif %}</option>
+          {% endfor %}
+        </select></label>
+      <label><span>Latitud (entre -90 y 90)</span>
+        <input name="clima_lat" type="text" inputmode="decimal" required
+               value="{{ '%g'|format(clima.clima_lat) }}"></label>
+      <label><span>Longitud (entre -180 y 180)</span>
+        <input name="clima_lon" type="text" inputmode="decimal" required
+               value="{{ '%g'|format(clima.clima_lon) }}"></label>
+      <label><span>Estación DMC (solo si usas la DMC)</span>
+        <input name="dmc_estacion" type="text" inputmode="numeric" maxlength="10"
+               value="{{ clima.dmc_estacion }}" placeholder="Código nacional, ej. 330020"></label>
+    </div>
+    <p class="ayuda">Ejemplo: San Ramón / La Pintana es latitud -33.54, longitud -70.64.
+      La foto horaria del clima usa las coordenadas nuevas desde la próxima hora.
+      La DMC no usa la latitud y longitud: entrega los datos de la estación elegida.
+      Las claves de la DMC y de OpenWeatherMap van solo en el archivo <code>.env</code> del servidor.</p>
+    <button type="submit">Guardar clima exterior</button>
+    <button type="submit" class="boton-secundario" formaction="{{ url_for('config.probar_clima') }}"
+            formnovalidate>Probar conexión</button>
+  </form>
+
+  <table class="tabla-resumen estado-proveedores">
+    <thead><tr><th scope="col">Proveedor</th><th scope="col">Estado</th></tr></thead>
+    <tbody>
+      {% for p in proveedores %}
+      <tr>
+        <th scope="row">{{ p.titulo }}{% if p.nombre == clima.clima_proveedor %} <small>(activo)</small>{% endif %}</th>
+        <td>{% if p.motivo %}<span class="no-configurado">No configurado</span>: {{ p.motivo }}
+            {% else %}<span class="configurado">Configurado</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section id="datos">
+  <h2>Datos para análisis</h2>
+  <p class="ayuda">Descarga los datos en CSV estándar (separador «,», punto decimal y horas en UTC) para
+    analizarlos con pandas, R o una planilla. El significado de cada columna está en
+    <code>docs/diccionario_de_datos.md</code>.</p>
+  <form method="get" class="ficha-config" id="form-exportar"
+        action="{{ url_for('exportar.exportar_formulario') }}">
+    <div class="fila-campos">
+      <label><span>Qué datos</span>
+        <select name="conjunto" id="exportar-conjunto">
+          <option value="lecturas">Lecturas con marcas de calidad</option>
+          <option value="agregados_hora">Resumen por hora</option>
+          <option value="agregados_dia">Resumen por día</option>
+          <option value="eventos_riego">Riegos detectados</option>
+          <option value="alertas">Alertas</option>
+          <option value="clima">Clima de referencia</option>
+        </select></label>
+      <label><span>Cama</span>
+        <select name="cama">
+          <option value="">Todas</option>
+          {% for cama in camas %}<option value="{{ cama.id }}">{{ cama.nombre }}</option>{% endfor %}
+        </select></label>
+      <label><span>Desde</span><input type="date" name="desde"></label>
+      <label><span>Hasta</span><input type="date" name="hasta"></label>
+    </div>
+    <p class="ayuda">Sin fechas: los últimos 7 días. Máximo un año por archivo.</p>
+    <button type="submit">Descargar CSV</button>
+  </form>
 </section>
 
 <section id="incidencias">

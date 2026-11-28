@@ -18,8 +18,9 @@ CFG = Config(
     db_nombre="huerto_test",
 )
 
-TABLAS = ["eventos_alerta", "alertas", "luz_diaria", "latencias_pantalla", "cambios_estado",
-          "lecturas", "nodos", "camas", "cultivos", "heartbeats", "conexiones_nodo", "incidencias"]
+TABLAS = ["rangos_cultivo_zona", "zonas_climaticas", "tiempos_tendencia", "eventos_riego", "calidad_lecturas", "agregados_hora", "agregados_dia", "eventos_alerta", "alertas", "luz_diaria", "latencias_pantalla", "cambios_estado",
+          "lecturas", "nodos", "camas", "cultivos", "heartbeats", "conexiones_nodo", "incidencias",
+          "configuracion_huerto", "clima_referencia"]
 
 # 26-11-2026 15:00 UTC = 12:00 en Chile (horario de verano, UTC-3)
 INICIO = datetime(2026, 11, 26, 15, 0, 0)

@@ -1,9 +1,12 @@
 {% extends "base.html" %}
+{% set menu_activo = 'tablero' %}
 
 {% block atributos_body %}data-kiosco="{{ '1' if kiosco else '0' }}"{% endblock %}
 {% block clase_main %}tablero{% endblock %}
 
 {% block contenido %}
+<section id="clima-exterior" class="clima-exterior" aria-label="Clima exterior de la zona" aria-live="polite" hidden></section>
+
 <section id="camas" class="camas" aria-label="Camas del huerto">
   <p class="cargando">Cargando las camas…</p>
 </section>
@@ -21,5 +24,6 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/clima.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tablero.js') }}"></script>
 {% endblock %}

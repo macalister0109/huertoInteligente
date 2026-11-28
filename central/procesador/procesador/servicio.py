@@ -15,14 +15,14 @@ import re
 from dataclasses import dataclass, field
 from types import SimpleNamespace
 from datetime import datetime, timedelta
-from typing import Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional
 from zoneinfo import ZoneInfo
 
 import pymysql
 
 from comun import mensajes
 from comun.config import Config
-from comun.db import ahora_utc
+from comun.db import ERRORES_CONEXION, ahora_utc
 from comun.rangos import rango_efectivo
 
 from . import ingreso
@@ -35,6 +35,11 @@ from .reglas.luz import (DiaLuz, calcular_luz, evaluar_poca_luz, fecha_local, li
 from .reglas.suelo import evaluar_suelo
 from .reglas.temperatura import evaluar_temperatura, inicio_racha_sobre_maximo
 from .sincronizador import Sincronizador, SincronizadorNulo
+
+if TYPE_CHECKING:
+    from .analitica import TareaAnalitica
+    from .clima import TareaClima
+    from .tendencia import TareaTendencia
 
 log = logging.getLogger(__name__)
 
@@ -62,12 +67,22 @@ class Resultado:
 class Procesador:
     def __init__(self, conn, cfg: Config, publicador: Publicador,
                  reloj: Callable[[], datetime] = ahora_utc,
-                 sincronizador: Optional[Sincronizador] = None):
+                 sincronizador: Optional[Sincronizador] = None,
+                 tarea_clima: Optional["TareaClima"] = None,
+                 tarea_analitica: Optional["TareaAnalitica"] = None,
+                 tarea_tendencia: Optional["TareaTendencia"] = None):
         self.conn = conn
         self.cfg = cfg
         self.publicador = publicador
         self.reloj = reloj
         self.sincronizador = sincronizador or SincronizadorNulo()
+        # Clima de referencia (una instantánea por hora). None = desactivado
+        # (así los tests nunca llaman a internet). main.py la activa.
+        self.tarea_clima = tarea_clima
+        # Marcas de calidad y agregados (capa de análisis). None = desactivada.
+        self.tarea_analitica = tarea_analitica
+        # Predicción de secado y alerta preventiva (RF-15). None = desactivada.
+        self.tarea_tendencia = tarea_tendencia
         self.zona = ZoneInfo(cfg.zona_horaria)
         # Último estado publicado por cama: cama_id -> (color, mensaje, desde)
         self.estados: dict[int, tuple[str, str, Optional[datetime]]] = {}
@@ -482,3 +497,40 @@ class Procesador:
                                                           "actualizado_en": iso(ahora)})
         self.conn.commit()
         self.sincronizador.sincronizar(self.conn)
+        # Al final del ciclo: un problema en estas tareas nunca afecta a las camas
+        self._tarea_secundaria(self.tarea_clima, ahora, "guardar el clima de referencia")
+        self._tarea_secundaria(self.tarea_analitica, ahora, "calcular los agregados")
+        if self.tarea_tendencia is not None:
+            self._tarea_secundaria(_Envoltura(self.tarea_tendencia, self), ahora,
+                                   "calcular la tendencia de secado")
+
+    def aplicar_y_publicar(self, cama: dict, decisiones: list[Decision], ahora: datetime) -> None:
+        """Aplica decisiones tomadas fuera de una lectura (ej. la alerta preventiva)
+        y actualiza el tablero."""
+        nuevas = self._aplicar(cama["id"], decisiones, ahora, ahora)
+        self.conn.commit()
+        self.actualizar_estado(cama, ahora, abrir_alertas_sensor=False)
+        self.publicar_tarjeta(cama, ahora, nuevas)
+        self.publicador.publicar(TOPICO_ALERTAS, {"cama_id": cama["id"], "actualizado_en": iso(ahora)})
+
+    def _tarea_secundaria(self, tarea, ahora: datetime, descripcion: str) -> None:
+        """Ejecuta `tarea.ejecutar(conn, ahora)` sin que un error afecte a las camas."""
+        if tarea is None:
+            return
+        try:
+            tarea.ejecutar(self.conn, ahora)
+        except ERRORES_CONEXION:
+            raise                       # main.py reconecta la BD y reintenta
+        except Exception:
+            log.exception("Error al %s (se reintenta más tarde)", descripcion)
+            self.conn.rollback()
+
+
+class _Envoltura:
+    """Adapta TareaTendencia (necesita el procesador) a la firma ejecutar(conn, ahora)."""
+
+    def __init__(self, tarea, procesador: Procesador):
+        self.tarea, self.procesador = tarea, procesador
+
+    def ejecutar(self, conn, ahora: datetime) -> None:
+        self.tarea.ejecutar(self.procesador, ahora)

@@ -1,0 +1,256 @@
+{% from "_menu.html" import menu_principal %}
+{% macro icono(nombre) -%}
+<svg class="icono-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor"
+     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+{%- if nombre == 'gota' %}<path d="M12 2.7c3 3.6 6 7.2 6 10.8a6 6 0 0 1-12 0c0-3.6 3-7.2 6-10.8z"/>
+{%- elif nombre == 'termometro' %}<path d="M14 14.8V4a2 2 0 0 0-4 0v10.8a4 4 0 1 0 4 0z"/><path d="M12 17v-5"/>
+{%- elif nombre == 'sol' %}<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+{%- elif nombre == 'docente' %}<circle cx="12" cy="7" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>
+{%- elif nombre == 'calendario' %}<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>
+{%- elif nombre == 'cuaderno' %}<path d="M4 4h12a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3z"/><path d="M8 8h7M8 12h7"/>
+{%- elif nombre == 'chip' %}<rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/>
+{%- elif nombre == 'nube' %}<path d="M7 18h10a4 4 0 0 0 .5-8 6 6 0 0 0-11.5 1.5A3.5 3.5 0 0 0 7 18z"/>
+{%- elif nombre == 'candado' %}<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+{%- elif nombre == 'reloj' %}<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
+{%- elif nombre == 'pantalla' %}<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>
+{%- elif nombre == 'estudiantes' %}<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20a6 6 0 0 1 12 0M14 20a4.5 4.5 0 0 1 7 0"/>
+{%- elif nombre == 'flecha' %}<path d="M5 12h14M13 6l6 6-6 6"/>
+{%- elif nombre == 'ok' %}<path d="M20 6 9 17l-5-5"/>
+{%- endif %}
+</svg>
+{%- endmacro %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>smartYusChaMau · Huerto inteligente del Colegio Marista Marcelino Champagnat</title>
+  <meta name="description" content="Monitoreo de bajo costo de humedad del suelo, temperatura y luz para el huerto escolar del Colegio Marista Marcelino Champagnat, La Pintana.">
+  <link rel="icon" type="image/webp" href="{{ url_for('static', filename='img/logo-smartyuschamau-96.webp') }}">
+  <link rel="preload" as="image" href="{{ url_for('static', filename='img/logo-smartyuschamau-96.webp') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
+</head>
+<body class="landing">
+  <a class="saltar" href="#contenido">Saltar al contenido</a>
+
+  <header class="cabecera">
+    <div class="contenedor cabecera-fila">
+      <a class="emblema" href="{{ url_for('tablero.proyecto') }}">
+        <img src="{{ url_for('static', filename='img/logo-smartyuschamau-96.webp') }}" alt="" width="48" height="48">
+        <span><strong>smartYusChaMau</strong><small>Colegio Marista Marcelino Champagnat</small></span>
+      </a>
+      <button class="boton-menu" type="button" aria-expanded="false" aria-controls="menu-landing">
+        <span class="sr">Abrir el menú</span><span aria-hidden="true">☰</span>
+      </button>
+      <div class="menu-landing" id="menu-landing">
+        {{ menu_principal('proyecto', 'menu-principal') }}
+        <a class="cta cta-chico" href="#sumate">Quiero sumarme</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="contenido">
+    {# ------------------------------------------------------------- 1. Hero #}
+    <section class="hero">
+      <div class="contenedor hero-grilla">
+        <div class="hero-texto">
+          <p class="insignia">Colegio Marista Marcelino Champagnat · La Pintana, RM · IoT educativo</p>
+          <h1>Deja de regar «a ojo» en La Pintana: transforma nuestro huerto escolar en un laboratorio vivo con datos en tiempo real.</h1>
+          <p class="bajada"><strong>smartYusChaMau</strong> traduce la humedad del suelo, la temperatura y las horas
+            de luz en alertas simples que nuestros estudiantes entienden en segundos, alivia la carga de los
+            docentes y protege los cultivos frente al clima extremo de la Región Metropolitana.</p>
+          <a class="cta cta-grande" href="#sumate">Quiero sumarme al piloto del colegio {{ icono('flecha') }}</a>
+          <p class="micro">Tecnología de bajo costo · Sencillez marista al servicio del aprendizaje</p>
+        </div>
+
+        <div class="simulador" aria-labelledby="simulador-titulo">
+          <p class="simulador-etiqueta" id="simulador-titulo">Así se ve una cama en la pantalla del huerto
+            <span>(simulación)</span></p>
+          <div class="simulador-botones" role="tablist" aria-label="Elige un estado de la cama">
+            <button type="button" role="tab" data-estado="verde" aria-selected="true">Todo bien</button>
+            <button type="button" role="tab" data-estado="rojo" aria-selected="false">Revisar</button>
+            <button type="button" role="tab" data-estado="gris" aria-selected="false">Sin conexión</button>
+          </div>
+          <article class="tarjeta-sim estado-verde" id="tarjeta-sim" role="tabpanel" aria-live="polite">
+            <header>
+              <h2 data-campo="nombre">Cama A</h2>
+              <span data-campo="cultivo">Tomates · zona central</span>
+            </header>
+            <p class="sim-mensaje"><span class="sim-icono" data-campo="icono" aria-hidden="true">✔</span>
+              <span data-campo="mensaje">Todo bien</span></p>
+            <dl class="sim-valores">
+              <div><dt>{{ icono('gota') }} Humedad del suelo</dt><dd data-campo="humedad">54 %</dd>
+                <small data-campo="ideal">ideal 30 a 70 %</small></div>
+              <div><dt>{{ icono('termometro') }} Temperatura</dt><dd data-campo="temp">24 °C</dd></div>
+              <div><dt>{{ icono('sol') }} Luz hoy</dt><dd data-campo="luz">6,8 h</dd></div>
+            </dl>
+            <p class="sim-pie" data-campo="pie">Medido hace 1 min</p>
+          </article>
+          <p class="sim-nota" data-campo="nota">Verde: la humedad, la temperatura y la luz están dentro del rango del cultivo.</p>
+        </div>
+      </div>
+    </section>
+
+    {# ---------------------------------------------------------- 2. Problema #}
+    <section class="seccion">
+      <div class="contenedor">
+        <h2 class="titulo-seccion">El valor educativo de un huerto muere cuando las plantas no sobreviven</h2>
+        <p class="intro">Los huertos escolares fallan por razones conocidas. Estas son las que el proyecto quiere
+          resolver en nuestro colegio.</p>
+        <div class="grilla-4">
+          <article class="ficha">
+            <p class="dato-grande"><span>33 %</span> y <span>32 %</span></p>
+            <h3>La trampa del riego a ojo</h3>
+            <p>Entre quienes han perdido plantas, el 33 % lo atribuye al exceso de agua y el 32 % a la falta de
+              riego. El error ocurre en los dos sentidos: solo medir la humedad real del suelo permite decidir.</p>
+            <p class="fuente">Encuesta de Trees.com (2022) a cultivadores domésticos de EE. UU.: evidencia indirecta.</p>
+          </article>
+          <article class="ficha">
+            {{ icono('docente') }}
+            <h3>Docentes con más carga</h3>
+            <p>Quien coordina el huerto lo suma a su trabajo académico, a menudo sin formación agrícola previa, y
+              tiene que revisar cada cama a diario.</p>
+          </article>
+          <article class="ficha">
+            {{ icono('calendario') }}
+            <h3>Heladas, calor y vacaciones</h3>
+            <p>En la Región Metropolitana, las heladas de invierno y el calor de verano ponen en riesgo los cultivos.
+              Las vacaciones de verano coinciden con la mayor demanda de riego, cuando no hay nadie en el colegio.</p>
+          </article>
+          <article class="ficha">
+            {{ icono('cuaderno') }}
+            <h3>Datos que se pierden</h3>
+            <p>Sin un registro de humedad, temperatura y luz, el huerto se vuelve una tarea mecánica en vez de un
+              espacio para observar, medir y formular hipótesis.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    {# ----------------------------------------------------------- 3. Solución #}
+    <section class="seccion seccion-clara">
+      <div class="contenedor">
+        <h2 class="titulo-seccion">Tecnología de bajo costo con pedagogía de la sencillez</h2>
+        <p class="intro">Con el espíritu de familia y el amor al trabajo de San Marcelino Champagnat,
+          <strong>smartYusChaMau</strong> pone un pequeño equipo <strong>ESP32</strong> en cada cama de cultivo.
+          Mide el suelo, el aire y la luz, y muestra el estado de cada cama en una pantalla en el huerto, con
+          colores y frases que cualquier estudiante entiende.</p>
+        <p class="intro nota-tecnica">El prototipo 1 usa una sonda de humedad de suelo calibrada y un sensor DHT11
+          de temperatura y humedad del aire. La versión final suma un sensor de aire <strong>BME280</strong> y uno de
+          luz <strong>BH1750</strong>.</p>
+        <div class="grilla-3">
+          <article class="ficha ficha-variable">
+            <p class="etiqueta-prioridad">Prioridad máxima · HU-01 y HU-02</p>
+            {{ icono('gota') }}
+            <h3>Humedad del suelo</h3>
+            <p>La última lectura de cada cama, con su hora. Si el suelo se seca o se encharca, el aviso aparece en
+              menos de 5 minutos y no se repite mientras la condición siga.</p>
+          </article>
+          <article class="ficha ficha-variable">
+            <p class="etiqueta-prioridad">HU-03</p>
+            {{ icono('termometro') }}
+            <h3>Temperatura extrema</h3>
+            <p>Riesgo de helada en la mañana o calor excesivo en verano (por ejemplo, más de 36 °C por más de
+              30 minutos), con una instrucción clara: «Cubre la planta» o «Dale sombra».</p>
+          </article>
+          <article class="ficha ficha-variable">
+            <p class="etiqueta-prioridad">HU-04</p>
+            {{ icono('sol') }}
+            <h3>Horas de luz directa</h3>
+            <p>Las horas de luz de cada día comparadas con lo que necesita el cultivo (por ejemplo, 6 h para el
+              tomate), para decidir el mejor lugar del patio.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    {# ------------------------------------------------------- 4. Hoja de ruta #}
+    <section class="seccion">
+      <div class="contenedor">
+        <h2 class="titulo-seccion">Cómo crece el proyecto: dos iteraciones</h2>
+        <ol class="ruta">
+          <li class="paso">
+            <span class="paso-numero">1</span>
+            <div>
+              <h3>{{ icono('pantalla') }} Visualización local en el huerto</h3>
+              <p>Nodos ESP32 en cada cama, un equipo central (Raspberry Pi con broker MQTT) y una pantalla en el
+                huerto con tarjetas de colores. Muestra cada medición en 10 segundos o menos y <strong>funciona sin
+                internet</strong>, para el trabajo diario de los estudiantes en clases.</p>
+              <p class="avance">En desarrollo: tendencia de secado y estimación del tiempo hasta el próximo riego
+                (regresión lineal), y comparación con el clima de la zona.</p>
+            </div>
+          </li>
+          <li class="paso">
+            <span class="paso-numero">2</span>
+            <div>
+              <h3>{{ icono('nube') }} Nube, historial y alertas móviles</h3>
+              <p>Sincronización en la nube con respaldo, historial para analizar datos en ciencias y matemáticas, y
+                alertas en el celular del docente para cuidar el huerto los fines de semana y en las vacaciones de
+                verano.</p>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    {# --------------------------------------------------------- 5. Calidad #}
+    <section class="seccion seccion-azul">
+      <div class="contenedor">
+        <h2 class="titulo-seccion">Metas de calidad que se miden, no se prometen</h2>
+        <p class="intro">Cada meta tiene una prueba definida en la documentación del proyecto.</p>
+        <ul class="metricas">
+          <li>{{ icono('reloj') }}<strong>&lt; 5 min</strong><span>desde una lectura fuera de rango hasta el aviso en pantalla</span><small>Meta CQ-02</small></li>
+          <li>{{ icono('pantalla') }}<strong>≤ 10 s</strong><span>desde la medición del sensor hasta la pantalla del huerto</span><small>Meta CQ-03</small></li>
+          <li>{{ icono('estudiantes') }}<strong>≥ 80 %</strong><span>de los estudiantes entiende el estado de una cama sin explicación previa</span><small>Meta CQ-09</small></li>
+          <li>{{ icono('candado') }}<strong>0</strong><span>datos personales: el sistema solo mide variables ambientales, sin cuentas de estudiantes</span><small>Privacidad</small></li>
+        </ul>
+      </div>
+    </section>
+
+    {# ------------------------------------------------------- 6. Formulario #}
+    <section class="seccion" id="sumate">
+      <div class="contenedor angosto">
+        <h2 class="titulo-seccion">Hagamos que el huerto del Marcelino Champagnat florezca con ciencia y comunidad</h2>
+        <p class="intro">Validemos juntos el prototipo piloto, ajustado al clima de La Pintana, a nuestro calendario
+          escolar y a los cultivos de nuestros estudiantes.</p>
+        <form class="formulario" id="formulario-piloto" novalidate data-correo="{{ piloto_correo }}">
+          <label>Nombre completo
+            <input name="nombre" autocomplete="name" required maxlength="80"></label>
+          <label>Estamento
+            <select name="estamento" required>
+              <option value="">Elige una opción</option>
+              <option>Docente</option><option>Directivo</option><option>Estudiante</option><option>Apoderado</option>
+            </select></label>
+          <label>Correo electrónico
+            <input name="correo" type="email" autocomplete="email" required maxlength="120"></label>
+          <label>Comentario o propuesta de cultivo <span class="opcional">(opcional)</span>
+            <textarea name="comentario" rows="4" maxlength="600"></textarea></label>
+          <p class="error-formulario" role="alert" hidden></p>
+          <button class="cta cta-grande" type="submit">Unirme al proyecto piloto smartYusChaMau</button>
+          <p class="micro">Este sitio no guarda tus datos: al enviar, se abre tu correo con el mensaje listo para que
+            lo mandes tú.</p>
+        </form>
+        <div class="confirmacion" id="confirmacion" role="status" hidden>
+          {{ icono('ok') }}
+          <h3>¡Gracias por sumarte!</h3>
+          <p>Se abrió tu programa de correo con la solicitud. Revísala y envíala para que el equipo del proyecto te
+            contacte. Si no se abrió, escribe a <a data-campo="correo"></a>.</p>
+        </div>
+        {% if not piloto_correo %}
+        <p class="aviso-config">Aún no hay un correo de contacto configurado para el piloto (PILOTO_CORREO).</p>
+        {% endif %}
+      </div>
+    </section>
+  </main>
+
+  <footer class="pie">
+    <div class="contenedor pie-fila">
+      <img src="{{ url_for('static', filename='img/logo-smartyuschamau-96.webp') }}" alt="" width="40" height="40" loading="lazy">
+      <p><strong>smartYusChaMau</strong> · Colegio Marista Marcelino Champagnat · La Pintana, Región Metropolitana, Chile</p>
+      {{ menu_principal('proyecto', 'menu-pie') }}
+    </div>
+  </footer>
+
+  <script src="{{ url_for('static', filename='js/landing.js') }}"></script>
+</body>
+</html>

@@ -17,6 +17,8 @@
 }
 
 * { box-sizing: border-box; }
+/* Lo oculto con el atributo hidden queda oculto aunque su clase defina display */
+[hidden] { display: none !important; }
 
 body {
   margin: 0;
@@ -39,10 +41,16 @@ code { font-size: 0.9em; }
   background: #1d2a1f;
   color: #fff;
 }
-.marca { color: #fff; font-weight: 700; font-size: 1.2rem; text-decoration: none; }
+.marca { color: #fff; font-weight: 700; font-size: 1.2rem; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 0.5rem; }
+.marca img { width: 2.2rem; height: 2.2rem; }
 .reloj { margin-left: auto; font-size: 1.3rem; font-variant-numeric: tabular-nums; font-weight: 700; }
 .navegacion { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
 .navegacion a { color: #fff; font-size: 0.85rem; }
+.navegacion ul { display: flex; gap: 1rem; flex-wrap: wrap; margin: 0; padding: 0; list-style: none; }
+.navegacion a[aria-current="page"] { font-weight: 700; text-decoration-thickness: 3px; }
+/* En la pantalla del huerto (kiosco) no se muestra el menú: no hay teclado ni mouse */
+body[data-kiosco="1"] .navegacion { display: none; }
 .estado-central {
   margin: 0;
   padding: 0.2rem 0.7rem;
@@ -250,3 +258,51 @@ button {
 .form-descarga { display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: flex-end; }
 .form-descarga label { display: grid; gap: 0.2rem; font-size: 0.9rem; }
 .form-descarga input { width: auto; }
+
+/* ------------------------------------------- clima exterior (referencia) */
+.clima-exterior {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 1.2rem;
+  background: var(--tarjeta);
+  border: 2px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 0.5rem 1rem;
+}
+.clima-exterior h2 { margin: 0; font-size: 1.05rem; }
+.clima-valores { display: flex; flex-wrap: wrap; gap: 0.3rem 1.2rem; margin: 0; }
+.clima-valores dt { font-size: 0.75rem; color: var(--texto-suave); }
+.clima-valores dd { margin: 0; font-size: 1.15rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.clima-et0 { margin: 0; font-size: 0.9rem; }
+.clima-estado { margin: 0 0 0 auto; font-size: 0.8rem; color: var(--texto-suave); }
+.clima-exterior.sin-clima { padding: 0.3rem 1rem; border-style: dashed; }
+.clima-exterior.sin-clima .clima-estado { margin: 0; }
+.estado-clima-desactualizado .clima-estado { color: var(--texto); font-weight: 700; }
+
+.comparacion-exterior { margin: 0 0.8rem 0.4rem; font-size: 0.85rem; }
+.sugerencia {
+  margin: 0 0.8rem 0.5rem;
+  padding: 0.3rem 0.6rem;
+  border-left: 4px solid #a87a00;
+  background: #fbf5e3;
+  font-size: 0.85rem;
+}
+.comparacion .sugerencia { margin: 0.5rem 0; }
+.estado-proveedores { margin-top: 0.6rem; }
+.configurado { color: var(--verde); font-weight: 700; }
+.no-configurado { color: var(--gris); font-weight: 700; }
+
+/* ------------------------------------------------- tendencia del suelo (RF-15) */
+.tendencia { margin: 0 0.8rem 0.3rem; font-size: 0.9rem; }
+.tendencia.rapido strong { color: var(--rojo); }
+.estimacion { margin: 0 0.8rem 0.5rem; font-size: 0.8rem; color: var(--texto-suave); }
+.panel-tendencia { display: grid; gap: 0.3rem; }
+.panel-tendencia p { margin: 0; }
+.panel-tendencia .principal { font-size: 1.1rem; font-weight: 700; }
+
+/* Tabla de rangos por zona */
+.tabla-zonas input { min-width: 4.5rem; }
+.tabla-zonas td { padding: 0.25rem 0.35rem; }
+.tabla-zonas input::placeholder { color: #9aa0a6; }

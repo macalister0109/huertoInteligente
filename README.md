@@ -273,7 +273,58 @@ del servidor, nginx + certbot, token y respaldos. En resumen:
 
 ---
 
-## 8. Problemas frecuentes
+## 8. Clima exterior de referencia
+
+El tablero compara cada cama con el clima de la zona (temperatura, humedad, sol y lluvia). Es una
+**referencia** de las condiciones actuales, no un pronóstico. Sin internet el huerto funciona igual:
+solo falta el bloque del clima. Más detalle en
+[docs/CLIMA_REFERENCIA.md](docs/CLIMA_REFERENCIA.md).
+
+**Cambiar de proveedor:** entra a `/configuracion` → «Clima exterior», elige el proveedor, la
+latitud y la longitud, aprieta «Probar conexión» y después «Guardar». La tabla de abajo dice si cada
+proveedor está «Configurado» o «No configurado» y qué le falta.
+
+| Proveedor | Variables en `central/.env` | Notas |
+| --- | --- | --- |
+| **Open-Meteo** (por defecto) | ninguna | Gratis y sin clave. Entrega también la humedad del suelo modelada y la ET0. |
+| **DMC** (Dirección Meteorológica de Chile) | `DMC_USER_EMAIL`, `DMC_API_TOKEN` | Pide registro en climatologia.meteochile.gob.cl. Usa una estación automática (EMA): escribe su código nacional en la configuración. No entrega datos de suelo ni ET0. **Aún no probado con un token real.** |
+| **OpenWeatherMap** | `OPENWEATHER_API_KEY` | Basta la key gratuita (Current Weather). No entrega radiación, suelo ni ET0. |
+
+Valores por defecto (los usa la configuración hasta que el docente los cambie): `CLIMA_PROVEEDOR`,
+`CLIMA_LAT`, `CLIMA_LON`, `DMC_ESTACION` y `CLIMA_TTL_MIN` (minutos que se reutiliza el dato,
+20 por defecto). Las claves **solo** van en el `.env` del servidor: nunca llegan al navegador ni a
+la BD. Después de editar el `.env`: `docker compose up -d` (recrea los servicios con las variables
+nuevas).
+
+La primera vez, aplica las migraciones nuevas: `docker compose exec web python -m comun.migrar`.
+
+---
+
+## 9. Datos para análisis y tendencias
+
+El equipo central calcula, a partir de las lecturas (que nunca se modifican):
+- marcas de calidad (rango, salto, sensor pegado y hueco);
+- resúmenes por hora y por día;
+- riegos detectados;
+- la tendencia de secado.
+
+Todo se puede recalcular sin duplicar:
+`docker compose exec web python -m comun.analitica.recalcular --desde AAAA-MM-DD --hasta AAAA-MM-DD`.
+
+| Para… | Usa |
+| --- | --- |
+| Descargar un CSV | `/configuracion` → «Datos para análisis», o `GET /api/exportar/<conjunto>.csv` con el PIN o con `Authorization: Bearer <EXPORT_TOKEN>` |
+| Exportar en CSV y Parquet | `python tools/exportar.py --desde AAAA-MM-DD --hasta AAAA-MM-DD` (fuera de Docker: `DB_HOST=127.0.0.1`) |
+| Practicar sin datos reales | `python tools/generar_sinteticos.py` (semilla fija; escribe en `analisis/datos_sinteticos/` y nunca en la BD) |
+| Explorar los datos | `pip install -r analisis/requirements.txt` y abrir `analisis/exploratorio.ipynb` |
+| Evaluar la predicción (CQ-10 a CQ-13) | `python tools/evaluar_tendencia.py` (escribe el reporte en `reportes/`) |
+
+El significado de cada columna y las limitaciones de los sensores están en
+[docs/diccionario_de_datos.md](docs/diccionario_de_datos.md).
+
+---
+
+## 10. Problemas frecuentes
 
 | Problema | Solución |
 | --- | --- |

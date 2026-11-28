@@ -1,3 +1,4 @@
+{% from "_menu.html" import menu_principal %}
 <!doctype html>
 <html lang="es">
 <head>
@@ -9,13 +10,13 @@
 </head>
 <body data-zona="{{ zona_horaria }}" {% block atributos_body %}{% endblock %}>
   <header class="barra">
-    <a class="marca" href="{{ url_for('tablero.tablero') }}">Huerto Inteligente</a>
+    <a class="marca" href="{{ url_for('tablero.tablero') }}">
+      <img src="{{ url_for('static', filename='img/logo-smartyuschamau-96.webp') }}" alt="" width="36" height="36">
+      Huerto Inteligente</a>
     <p id="estado-central" class="estado-central" role="status" hidden></p>
     <time id="reloj" class="reloj" aria-label="Hora actual"></time>
     {% block navegacion %}
-    <nav class="navegacion">
-      <a href="{{ url_for('config.inicio') }}">Configuración</a>
-    </nav>
+    {{ menu_principal(menu_activo|default(''), 'navegacion') }}
     {% endblock %}
   </header>
 

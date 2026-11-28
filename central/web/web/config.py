@@ -29,6 +29,12 @@ class ConfigWeb:
     proxy_saltos: int = 0
     # true cuando el tablero se sirve por HTTPS: la cookie de sesión no viaja por HTTP
     cookie_segura: bool = False
+    # Correo que recibe las solicitudes del formulario de la página del proyecto.
+    # El sistema NO guarda esos datos: el formulario abre el correo del visitante.
+    piloto_correo: str = ""
+    # Token para exportar datos desde scripts o notebooks (Authorization: Bearer …).
+    # Vacío = solo con la sesión docente. Mínimo 16 caracteres.
+    export_token: str = ""
 
     @property
     def pin_configurado(self) -> bool:
@@ -50,4 +56,6 @@ class ConfigWeb:
             proxy_saltos=int(entorno.get("PROXY_SALTOS") or 0),
             cookie_segura=(entorno.get("COOKIE_SEGURA", "").strip().lower()
                            in ("1", "true", "si", "sí", "yes", "on")),
+            piloto_correo=entorno.get("PILOTO_CORREO", "").strip(),
+            export_token=(lambda t: t if len(t) >= 16 else "")(entorno.get("EXPORT_TOKEN", "").strip()),
         )

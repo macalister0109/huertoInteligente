@@ -19,13 +19,16 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from comun.config import cargar_env
 from comun.db import ahora_utc, conectar
 
+from .clima import CrearProveedor, ServicioClima
 from .config import ConfigWeb
 from .contexto import Contexto
 from .difusor import Difusor, DifusorMqtt
 
 
 def crear_app(cfg: Optional[ConfigWeb] = None, difusor: Optional[Difusor] = None,
-              conectar_bd: Optional[Callable] = None, reloj: Optional[Callable] = None) -> Flask:
+              conectar_bd: Optional[Callable] = None, reloj: Optional[Callable] = None,
+              crear_proveedor_clima: Optional[CrearProveedor] = None) -> Flask:
+    """`crear_proveedor_clima(nombre)` permite a los tests usar un proveedor falso."""
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     if cfg is None:
@@ -48,21 +51,29 @@ def crear_app(cfg: Optional[ConfigWeb] = None, difusor: Optional[Difusor] = None
     if difusor is None:
         difusor = DifusorMqtt(cfg.bd.mqtt_host, cfg.bd.mqtt_puerto,
                               cfg.mqtt_usuario, cfg.mqtt_clave).iniciar()
+    reloj = reloj or ahora_utc
     app.extensions["huerto"] = Contexto(
         cfg=cfg, difusor=difusor,
         conectar_bd=conectar_bd or (lambda: conectar(cfg.bd)),
-        reloj=reloj or ahora_utc,
+        reloj=reloj,
         zona=ZoneInfo(cfg.zona_horaria),
+        clima=ServicioClima(cfg.bd, reloj, crear_proveedor_clima),
     )
 
     from .rutas_api import bp as bp_api
+    from .rutas_clima import bp as bp_clima
     from .rutas_config import bp as bp_config
+    from .rutas_exportar import bp as bp_exportar
     from .rutas_historial import bp as bp_historial
     from .rutas_tablero import bp as bp_tablero
+    from .rutas_tendencia import bp as bp_tendencia
     app.register_blueprint(bp_tablero)
     app.register_blueprint(bp_config)
     app.register_blueprint(bp_api)
     app.register_blueprint(bp_historial)
+    app.register_blueprint(bp_clima)
+    app.register_blueprint(bp_tendencia)
+    app.register_blueprint(bp_exportar)
 
     @app.teardown_appcontext
     def cerrar_bd(_error=None):

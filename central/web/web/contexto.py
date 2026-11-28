@@ -2,11 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 from zoneinfo import ZoneInfo
 
 from .config import ConfigWeb
 from .difusor import Difusor
+
+if TYPE_CHECKING:
+    from .clima import ServicioClima
 
 
 @dataclass
@@ -16,3 +19,4 @@ class Contexto:
     conectar_bd: Callable
     reloj: Callable[[], datetime]
     zona: ZoneInfo
+    clima: "ServicioClima"

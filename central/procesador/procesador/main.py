@@ -22,6 +22,9 @@ import paho.mqtt.client as mqtt
 from comun.config import Config, cargar_env
 from comun.db import ERRORES_CONEXION, conectar_con_reintentos
 
+from .analitica import TareaAnalitica
+from .clima import TareaClima
+from .tendencia import TareaTendencia
 from .publicador import PublicadorMqtt
 from .servicio import Procesador
 
@@ -101,7 +104,10 @@ class Servicio:
 
     def ejecutar(self) -> None:
         conn = conectar_con_reintentos(self.cfg)
-        self.procesador = Procesador(conn, self.cfg, PublicadorMqtt(self.cliente))
+        self.procesador = Procesador(conn, self.cfg, PublicadorMqtt(self.cliente),
+                                     tarea_clima=TareaClima(self.cfg),
+                                     tarea_analitica=TareaAnalitica(self.cfg),
+                                     tarea_tendencia=TareaTendencia(self.cfg))
 
         self.cliente.connect_async(self.cfg.mqtt_host, self.cfg.mqtt_puerto, keepalive=30)
         self.cliente.loop_start()

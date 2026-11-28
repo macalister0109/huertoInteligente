@@ -10,6 +10,7 @@ from flask import Blueprint, Response, abort, current_app, jsonify, render_templ
 
 from comun import mensajes
 from comun.fechas import inicio_del_dia_utc, iso, parsear_iso_utc
+from comun.analitica import repositorio as repo_analitica
 from comun.rangos import rango_efectivo
 
 from . import bd, consultas, contexto
@@ -34,6 +35,12 @@ def tablero():
     # ?kiosco=1 en la pantalla del huerto: solo esa pantalla mide latencias (CQ-02/03),
     # porque usa el mismo reloj que la Pi y los nodos.
     return render_template("tablero.html", kiosco=request.args.get("kiosco") == "1")
+
+
+@bp.get("/proyecto")
+def proyecto():
+    """Página del proyecto (presentación para la comunidad del colegio)."""
+    return render_template("proyecto.html", piloto_correo=contexto().cfg.piloto_correo)
 
 
 @bp.get("/favicon.ico")
@@ -139,15 +146,24 @@ def api_serie(cama_id: int):
 
     rango = rango_efectivo(cama)
     alertas = consultas.alertas_de_cama(conn, cama_id, hasta - timedelta(days=7))
+    riegos = []
+    try:
+        riegos = [{"inicio": iso(e.inicio), "fin": iso(e.fin), "antes": e.humedad_antes,
+                   "despues": e.humedad_despues, "origen": e.origen}
+                  for e in repo_analitica.riegos(conn, cama_id, desde, hasta)]
+        conn.commit()
+    except Exception:              # BD sin la migración 005: el gráfico sale igual, sin riegos
+        conn.rollback()
     return jsonify(
         cama={"id": cama["id"], "nombre": cama["nombre"], "cultivo": cama["cultivo_nombre"],
-              "zona": cama["zona_climatica"]},
+              "zona": cama.get("zona_nombre") or cama["zona_climatica"]},
         rango={"humedad_min": rango.humedad_min, "humedad_max": rango.humedad_max,
                "temp_min": rango.temp_min, "temp_max": rango.temp_max,
                "horas_luz_min": rango.horas_luz_min},
         umbral_luz=ctx.cfg.umbral_luz_lux,
         desde=iso(desde), hasta=iso(hasta),
         puntos=puntos,
+        riegos=riegos,
         alertas=[_alerta(a) for a in alertas],
     )
 

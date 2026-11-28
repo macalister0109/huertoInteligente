@@ -38,6 +38,19 @@ CREATE TABLE IF NOT EXISTS cultivos (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -------------------------------------------------------------
+-- Zonas climáticas (migración 007). Ajustan los rangos ideales de cada
+-- cultivo: no es lo mismo plantar en el norte que en el sur.
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS zonas_climaticas (
+    id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    codigo      VARCHAR(20)  NOT NULL COMMENT 'norte | centro | sur',
+    nombre      VARCHAR(60)  NOT NULL,
+    descripcion VARCHAR(255) NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_zonas_codigo (codigo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -------------------------------------------------------------
 -- Camas: un nodo ESP32 por cama.
 -- RF-09: cada rango personalizado (NULL = usar el del cultivo)
 -- reemplaza campo por campo al del cultivo.
@@ -47,7 +60,8 @@ CREATE TABLE IF NOT EXISTS camas (
     nombre         VARCHAR(60)  NOT NULL COMMENT 'nombre visible, ej. Cama A',
     nodo_id        VARCHAR(40)  NOT NULL COMMENT 'identificador del ESP32, ej. cama-a',
     cultivo_id     INT UNSIGNED NULL,
-    zona_climatica VARCHAR(60)  NULL,
+    zona_climatica VARCHAR(60)  NULL COMMENT 'texto libre anterior (se conserva)',
+    zona_id        INT UNSIGNED NULL COMMENT 'NULL = usar la zona del huerto',
     humedad_min    DECIMAL(5,2) NULL,
     humedad_max    DECIMAL(5,2) NULL,
     temp_min       DECIMAL(5,2) NULL,
@@ -60,6 +74,8 @@ CREATE TABLE IF NOT EXISTS camas (
     KEY ix_camas_cultivo (cultivo_id),
     CONSTRAINT fk_camas_cultivo FOREIGN KEY (cultivo_id) REFERENCES cultivos (id)
         ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_camas_zona FOREIGN KEY (zona_id) REFERENCES zonas_climaticas (id)
+        ON DELETE SET NULL,
     CONSTRAINT ck_camas_humedad CHECK (humedad_min IS NULL OR humedad_max IS NULL OR humedad_min <= humedad_max),
     CONSTRAINT ck_camas_temp    CHECK (temp_min    IS NULL OR temp_max    IS NULL OR temp_min    <= temp_max),
     CONSTRAINT ck_camas_hum_0_100 CHECK ((humedad_min IS NULL OR humedad_min BETWEEN 0 AND 100)
@@ -156,7 +172,8 @@ CREATE TABLE IF NOT EXISTS alertas (
     id             BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     cama_id        INT UNSIGNED    NOT NULL,
     tipo           ENUM('suelo_seco','suelo_encharcado','helada','calor',
-                        'poca_luz','sensor_sin_datos') NOT NULL,
+                        'poca_luz','sensor_sin_datos','tendencia_secado') NOT NULL
+                   COMMENT 'tendencia_secado = preventiva (RF-15), no pone la cama en rojo',
     variable       ENUM('suelo','temperatura','luz') NOT NULL,
     estado         ENUM('abierta','resuelta') NOT NULL DEFAULT 'abierta',
     mensaje        VARCHAR(255)    NOT NULL COMMENT 'texto que se muestra en pantalla',
@@ -270,6 +287,200 @@ CREATE TABLE IF NOT EXISTS incidencias (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -------------------------------------------------------------
+-- Configuración del huerto editable desde /configuracion (migración 002).
+-- Clave/valor; si una clave no está, rige el valor del .env.
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS configuracion_huerto (
+    clave          VARCHAR(60)  NOT NULL,
+    valor          VARCHAR(255) NOT NULL,
+    actualizado_en DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (clave)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -------------------------------------------------------------
+-- Clima externo de REFERENCIA, una instantánea por hora (migración 003).
+-- No es un pronóstico. hum_suelo_vwc_pct es % volumétrico MODELADO para una
+-- celda de varios km: no se compara directo con el % calibrado de la sonda.
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS clima_referencia (
+    id                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    fuente            VARCHAR(30)     NOT NULL COMMENT 'open-meteo | dmc | openweather',
+    observado_en      DATETIME        NOT NULL COMMENT 'UTC, hora del dato según el proveedor',
+    obtenido_en       DATETIME(3)     NOT NULL COMMENT 'UTC, cuándo se consultó',
+    lat               DECIMAL(8,5)    NOT NULL,
+    lon               DECIMAL(8,5)    NOT NULL,
+    temp_aire_c       DOUBLE          NULL COMMENT '°C a 2 m',
+    hum_rel_pct       DOUBLE          NULL COMMENT '% humedad relativa a 2 m',
+    precipitacion_mm  DOUBLE          NULL COMMENT 'mm',
+    radiacion_wm2     DOUBLE          NULL COMMENT 'W/m² radiación de onda corta',
+    temp_suelo_c      DOUBLE          NULL COMMENT '°C superficie del suelo (modelo)',
+    hum_suelo_vwc_pct DOUBLE          NULL COMMENT '% vol. 0-1 cm (modelo)',
+    et0_mm            DOUBLE          NULL COMMENT 'mm ET0 FAO de la hora',
+    et0_hoy_mm        DOUBLE          NULL COMMENT 'mm ET0 acumulada hoy (hora de Chile)',
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_clima_fuente_hora (fuente, observado_en, lat, lon),
+    KEY ix_clima_observado (observado_en)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -------------------------------------------------------------
+-- Capa de datos para análisis (migración 004). Todo se calcula desde
+-- `lecturas` (que no se toca) y se puede recalcular:
+--   python -m comun.analitica.recalcular --desde AAAA-MM-DD --hasta AAAA-MM-DD
+-- Detalle de cada columna en docs/diccionario_de_datos.md
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS calidad_lecturas (
+    lectura_id   BIGINT UNSIGNED NOT NULL,
+    cama_id      INT UNSIGNED    NOT NULL,
+    medido_en    DATETIME        NOT NULL COMMENT 'UTC, copiado de la lectura (para filtrar sin JOIN)',
+    variable     ENUM('suelo','temp','hum_aire','lectura') NOT NULL,
+    marca        ENUM('rango','salto','pegado','hueco') NOT NULL,
+    detalle      VARCHAR(255)    NULL,
+    calculado_en DATETIME        NOT NULL,
+    PRIMARY KEY (lectura_id, variable, marca),
+    KEY ix_calidad_cama_medido (cama_id, medido_en),
+    CONSTRAINT fk_calidad_lectura FOREIGN KEY (lectura_id) REFERENCES lecturas (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS agregados_hora (
+    cama_id      INT UNSIGNED    NOT NULL,
+    hora_inicio  DATETIME        NOT NULL COMMENT 'UTC, inicio de la hora',
+    variable     ENUM('suelo','temp','hum_aire') NOT NULL,
+    media        DOUBLE          NULL,
+    minimo       DOUBLE          NULL,
+    maximo       DOUBLE          NULL,
+    desviacion   DOUBLE          NULL COMMENT 'desviación estándar muestral (NULL con menos de 2 valores)',
+    n_lecturas   INT UNSIGNED    NOT NULL COMMENT 'valores válidos usados',
+    n_excluidas  INT UNSIGNED    NOT NULL DEFAULT 0 COMMENT 'valores descartados (rango, salto, pegado)',
+    n_esperadas  INT UNSIGNED    NOT NULL,
+    cobertura    DOUBLE          NOT NULL COMMENT '0 a 1',
+    calculado_en DATETIME        NOT NULL,
+    PRIMARY KEY (cama_id, hora_inicio, variable),
+    CONSTRAINT fk_agr_hora_cama FOREIGN KEY (cama_id) REFERENCES camas (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS agregados_dia (
+    cama_id           INT UNSIGNED    NOT NULL,
+    fecha             DATE            NOT NULL COMMENT 'día en hora de Chile',
+    variable          ENUM('suelo','temp','hum_aire') NOT NULL,
+    media             DOUBLE          NULL,
+    minimo            DOUBLE          NULL,
+    maximo            DOUBLE          NULL,
+    desviacion        DOUBLE          NULL,
+    amplitud          DOUBLE          NULL COMMENT 'máximo - mínimo del día (amplitud térmica en temp)',
+    horas_fuera_rango DOUBLE          NULL COMMENT 'horas fuera del rango ideal de la cama (NULL sin rango)',
+    n_lecturas        INT UNSIGNED    NOT NULL,
+    n_excluidas       INT UNSIGNED    NOT NULL DEFAULT 0,
+    n_esperadas       INT UNSIGNED    NOT NULL,
+    cobertura         DOUBLE          NOT NULL,
+    calculado_en      DATETIME        NOT NULL,
+    PRIMARY KEY (cama_id, fecha, variable),
+    CONSTRAINT fk_agr_dia_cama FOREIGN KEY (cama_id) REFERENCES camas (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE OR REPLACE VIEW v_clima_hora AS
+SELECT fuente,
+       TIMESTAMP(DATE(observado_en), MAKETIME(HOUR(observado_en), 0, 0)) AS hora_inicio,
+       AVG(lat) AS lat, AVG(lon) AS lon,
+       AVG(temp_aire_c) AS temp_aire_c, AVG(hum_rel_pct) AS hum_rel_pct,
+       SUM(precipitacion_mm) AS precipitacion_mm, AVG(radiacion_wm2) AS radiacion_wm2,
+       AVG(temp_suelo_c) AS temp_suelo_c, AVG(hum_suelo_vwc_pct) AS hum_suelo_vwc_pct,
+       MAX(et0_mm) AS et0_mm, COUNT(*) AS n_instantaneas
+  FROM clima_referencia
+ GROUP BY fuente, TIMESTAMP(DATE(observado_en), MAKETIME(HOUR(observado_en), 0, 0));
+
+-- -------------------------------------------------------------
+-- Eventos de riego y tramos de secado (migración 005). Los 'detectado'
+-- se recalculan desde las lecturas; los 'manual' (futuro) no se borran.
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS eventos_riego (
+    id               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    cama_id          INT UNSIGNED    NOT NULL,
+    origen           ENUM('detectado','manual') NOT NULL DEFAULT 'detectado',
+    inicio           DATETIME        NOT NULL COMMENT 'UTC',
+    fin              DATETIME        NULL     COMMENT 'UTC, punto más alto de la subida',
+    humedad_antes    DOUBLE          NULL     COMMENT '% suelo (escala calibrada de la sonda)',
+    humedad_despues  DOUBLE          NULL,
+    lectura_antes_id BIGINT UNSIGNED NULL,
+    lectura_despues_id BIGINT UNSIGNED NULL,
+    notas            VARCHAR(255)    NULL     COMMENT 'para el registro manual (futuro)',
+    calculado_en     DATETIME        NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_riego_cama_inicio (cama_id, inicio, origen),
+    KEY ix_riego_cama_fin (cama_id, fin),
+    CONSTRAINT fk_riego_cama FOREIGN KEY (cama_id) REFERENCES camas (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE OR REPLACE VIEW v_tramos_secado AS
+SELECT id AS evento_id,
+       cama_id,
+       origen,
+       COALESCE(fin, inicio) AS inicio_tramo,
+       LEAD(inicio) OVER (PARTITION BY cama_id ORDER BY inicio, id) AS fin_tramo,
+       humedad_despues AS humedad_inicial
+  FROM eventos_riego;
+
+-- -------------------------------------------------------------
+-- CQ-13: tiempo de cálculo de cada predicción de tendencia (migración 006)
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS tiempos_tendencia (
+    id           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    cama_id      INT UNSIGNED    NOT NULL,
+    calculado_en DATETIME(3)     NOT NULL,
+    duracion_ms  DOUBLE          NOT NULL,
+    n_puntos     INT UNSIGNED    NOT NULL,
+    estado       VARCHAR(30)     NOT NULL COMMENT 'estimacion | fuera_horizonte | bajo_minimo | sin_tendencia | sin_rango',
+    horas        DOUBLE          NULL     COMMENT 'horas estimadas hasta el mínimo',
+    pendiente    DOUBLE          NULL     COMMENT 'puntos % por hora',
+    r2           DOUBLE          NULL,
+    PRIMARY KEY (id),
+    KEY ix_tiempos_cama (cama_id, calculado_en),
+    CONSTRAINT fk_tiempos_cama FOREIGN KEY (cama_id) REFERENCES camas (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -------------------------------------------------------------
+-- Rangos del cultivo por zona (migración 007). Orden para cada campo:
+-- rango de la cama > cultivo + zona > cultivo genérico.
+-- Los valores de ejemplo se cargan en semillas.sql.
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS rangos_cultivo_zona (
+    cultivo_id    INT UNSIGNED NOT NULL,
+    zona_id       INT UNSIGNED NOT NULL,
+    humedad_min   DECIMAL(5,2) NULL,
+    humedad_max   DECIMAL(5,2) NULL,
+    temp_min      DECIMAL(5,2) NULL,
+    temp_max      DECIMAL(5,2) NULL,
+    horas_luz_min DECIMAL(4,2) NULL,
+    por_confirmar TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '1 = valor de ejemplo, confirmar con INIA/INDAP',
+    notas         VARCHAR(255) NULL,
+    PRIMARY KEY (cultivo_id, zona_id),
+    CONSTRAINT fk_rcz_cultivo FOREIGN KEY (cultivo_id) REFERENCES cultivos (id) ON DELETE CASCADE,
+    CONSTRAINT fk_rcz_zona FOREIGN KEY (zona_id) REFERENCES zonas_climaticas (id) ON DELETE CASCADE,
+    CONSTRAINT ck_rcz_humedad CHECK (humedad_min IS NULL OR humedad_max IS NULL OR humedad_min <= humedad_max),
+    CONSTRAINT ck_rcz_temp    CHECK (temp_min    IS NULL OR temp_max    IS NULL OR temp_min    <= temp_max),
+    CONSTRAINT ck_rcz_hum_0_100 CHECK ((humedad_min IS NULL OR humedad_min BETWEEN 0 AND 100)
+                                   AND (humedad_max IS NULL OR humedad_max BETWEEN 0 AND 100)),
+    CONSTRAINT ck_rcz_luz     CHECK (horas_luz_min IS NULL OR horas_luz_min BETWEEN 0 AND 24)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Zona efectiva y rango del cultivo en esa zona, por cama
+CREATE OR REPLACE VIEW v_camas_zona AS
+SELECT c.id AS cama_id,
+       z.id AS zona_efectiva_id,
+       z.codigo AS zona_codigo,
+       z.nombre AS zona_nombre,
+       (c.zona_id IS NULL) AS zona_heredada,
+       rz.humedad_min AS zona_humedad_min, rz.humedad_max AS zona_humedad_max,
+       rz.temp_min AS zona_temp_min, rz.temp_max AS zona_temp_max,
+       rz.horas_luz_min AS zona_horas_luz_min, rz.por_confirmar AS zona_por_confirmar
+  FROM camas c
+  LEFT JOIN zonas_climaticas z
+         ON z.id = COALESCE(c.zona_id,
+                   (SELECT z2.id FROM zonas_climaticas z2
+                     WHERE z2.codigo = COALESCE((SELECT h.valor FROM configuracion_huerto h
+                                                  WHERE h.clave = 'zona_huerto'), 'centro')))
+  LEFT JOIN rangos_cultivo_zona rz ON rz.cultivo_id = c.cultivo_id AND rz.zona_id = z.id;
+
+-- -------------------------------------------------------------
 -- Migraciones aplicadas (python -m comun.migrar). Una BD creada con
 -- este archivo ya incluye todas las migraciones de db/migraciones/.
 -- -------------------------------------------------------------
@@ -279,4 +490,7 @@ CREATE TABLE IF NOT EXISTS migraciones (
     PRIMARY KEY (nombre)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT IGNORE INTO migraciones (nombre) VALUES ('001_api_nodos.sql');
+INSERT IGNORE INTO migraciones (nombre) VALUES
+    ('001_api_nodos.sql'), ('002_configuracion_huerto.sql'), ('003_clima_referencia.sql'),
+    ('004_calidad_agregados.sql'), ('005_eventos_riego.sql'),
+    ('006_tendencias.sql'), ('007_zonas.sql');

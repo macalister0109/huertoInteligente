@@ -11,9 +11,31 @@
   <h1>{{ cama.nombre }}</h1>
   <p id="detalle-cultivo" class="detalle-cultivo">
     {% if cama.cultivo_nombre %}Cultivo: {{ cama.cultivo_nombre }}{% else %}Sin cultivo asignado{% endif %}
-    {% if cama.zona_climatica %} · Zona: {{ cama.zona_climatica }}{% endif %}
+    {% if cama.zona_nombre %} · Zona: {{ cama.zona_nombre }}{% if cama.zona_heredada %} (la del huerto){% endif %}{% endif %}
+    {% if cama.zona_por_confirmar %} · <small>rangos de ejemplo, por confirmar</small>{% endif %}
   </p>
 </header>
+
+<section id="comparacion-exterior" class="panel-avisos comparacion" aria-live="polite" hidden>
+  <h2>Comparación con el clima de la zona</h2>
+  <div class="tabla-desplazable">
+    <table class="tabla-resumen">
+      <thead>
+        <tr>
+          <th scope="col">Variable</th>
+          <th scope="col">En la cama</th>
+          <th scope="col">Afuera (zona)</th>
+          <th scope="col">Diferencia</th>
+        </tr>
+      </thead>
+      <tbody id="comparacion-filas"></tbody>
+    </table>
+  </div>
+  <div id="comparacion-notas"></div>
+  <p class="detalle-ayuda">El exterior es una <strong>referencia</strong> de la zona, no un pronóstico.
+    El sensor de la cama (DHT11) tiene un error de ±2 °C y ±5 puntos de humedad: diferencias menores
+    se muestran como «similar».</p>
+</section>
 
 <div class="periodo" role="group" aria-label="Período de los gráficos">
   <span class="periodo-titulo">Ver:</span>
@@ -22,6 +44,14 @@
   <button type="button" class="boton-periodo" data-horas="720" aria-pressed="false">30 días</button>
 </div>
 <p id="detalle-ayuda" class="detalle-ayuda">Últimas 24 horas. La franja verde es el rango ideal.</p>
+
+<section id="panel-tendencia" class="panel-avisos panel-tendencia" aria-live="polite" hidden>
+  <h2>Tendencia del suelo</h2>
+  <p class="principal" id="tendencia-etiqueta"></p>
+  <p id="tendencia-estimacion"></p>
+  <p class="detalle-ayuda" id="tendencia-detalle"></p>
+  <p id="tendencia-amplitud"></p>
+</section>
 
 <section class="graficos">
   <figure class="grafico">
@@ -75,5 +105,6 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='vendor/chart-4.6.2.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/clima.js') }}"></script>
 <script src="{{ url_for('static', filename='js/cama.js') }}"></script>
 {% endblock %}
