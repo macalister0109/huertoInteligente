@@ -63,3 +63,11 @@ def test_formulario_con_correo_configurado(bd, difusor, reloj):
     app = crear_app(cfg, difusor=difusor, conectar_bd=lambda: conectar(CFG), reloj=reloj)
     html = app.test_client().get("/").get_data(as_text=True)
     assert 'data-correo="huerto@colegio.cl"' in html and "no hay un correo de contacto" not in html
+
+
+def test_sin_piloto_correo_en_el_env_se_usa_el_del_equipo():
+    from web.config import PILOTO_CORREO_POR_DEFECTO, ConfigWeb as _Cfg
+    assert PILOTO_CORREO_POR_DEFECTO == "macarena@mjamett.cl"
+    assert _Cfg.desde_entorno({}).piloto_correo == "macarena@mjamett.cl"
+    assert _Cfg.desde_entorno({"PILOTO_CORREO": "  "}).piloto_correo == "macarena@mjamett.cl"
+    assert _Cfg.desde_entorno({"PILOTO_CORREO": "otro@colegio.cl"}).piloto_correo == "otro@colegio.cl"

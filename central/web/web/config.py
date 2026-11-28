@@ -12,6 +12,11 @@ from comun.config import Config
 PINES_DE_EJEMPLO = {"", "cambia_esto"}
 
 
+# Correo del equipo del piloto que recibe el formulario «Sumarse al piloto» si
+# el .env no define PILOTO_CORREO (ya se muestra en la página pública).
+PILOTO_CORREO_POR_DEFECTO = "macarena@mjamett.cl"
+
+
 @dataclass(frozen=True)
 class ConfigWeb:
     bd: Config = field(default_factory=Config)
@@ -31,7 +36,7 @@ class ConfigWeb:
     cookie_segura: bool = False
     # Correo que recibe las solicitudes del formulario de la página del proyecto.
     # El sistema NO guarda esos datos: el formulario abre el correo del visitante.
-    piloto_correo: str = ""
+    piloto_correo: str = ""     # desde_entorno usa PILOTO_CORREO_POR_DEFECTO si falta
     # Token para exportar datos desde scripts o notebooks (Authorization: Bearer …).
     # Vacío = solo con la sesión docente. Mínimo 16 caracteres.
     export_token: str = ""
@@ -56,6 +61,6 @@ class ConfigWeb:
             proxy_saltos=int(entorno.get("PROXY_SALTOS") or 0),
             cookie_segura=(entorno.get("COOKIE_SEGURA", "").strip().lower()
                            in ("1", "true", "si", "sí", "yes", "on")),
-            piloto_correo=entorno.get("PILOTO_CORREO", "").strip(),
+            piloto_correo=entorno.get("PILOTO_CORREO", "").strip() or PILOTO_CORREO_POR_DEFECTO,
             export_token=(lambda t: t if len(t) >= 16 else "")(entorno.get("EXPORT_TOKEN", "").strip()),
         )

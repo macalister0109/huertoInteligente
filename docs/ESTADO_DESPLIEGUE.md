@@ -1,9 +1,10 @@
 # Estado del despliegue — Huerto Inteligente, prototipo 1
 
-**Actualizado:** 28-11-2026, 10:45  ·  **Equipo central en uso:** servidor `huerto.mjvirtual.cl`
+**Actualizado:** 28-11-2026, 11:20  ·  **Equipo central en uso:** servidor `huerto.mjvirtual.cl`
 (VPS Debian)  ·  **Desarrollo:** PC con Windows 11 (Docker Desktop 29.9.3)  ·  **Versión:** `main`,
-commit `e8b78e2` (en el servidor corre el rediseño de `07eee89`; los commits posteriores son solo
-documentación)
+commit `625d4df` (desplegado en el servidor el 28-11-2026, con la migración 008)
+
+> **Para continuar el lunes 30-11-2026:** ver [NOTA_LUNES_30-11.md](NOTA_LUNES_30-11.md).
 
 > Este archivo no contiene claves. Las credenciales están solo en archivos que no se suben al
 > repositorio: `central/.env`, `central/mosquitto/config/passwd` y `firmware/nodo/config.h`.
@@ -12,25 +13,43 @@ documentación)
 
 | Parte | Estado |
 | --- | --- |
-| Servidor mjvirtual (`huerto.mjvirtual.cl`) | ✅ En marcha con HTTPS y con el rediseño (`07eee89`): `/` es la presentación, `/proyecto` redirige a `/` (revisado el 28-11-2026) |
-| Base de datos (MariaDB 11.4) | ⏳ En el servidor, con las migraciones 001 a 007 aplicadas. **Falta aplicar la 008** (calibración de la sonda en el servidor) |
-| API HTTP para el ESP32 | ✅ En marcha; la Cama A recibe lecturas en el servidor (28-11-2026 10:43, seq 2206) |
+| Servidor mjvirtual (`huerto.mjvirtual.cl`) | ✅ En marcha con HTTPS, actualizado el 28-11-2026 a `625d4df` (rediseño + calibración en el servidor) |
+| Base de datos (MariaDB 11.4) | ✅ En el servidor, con las migraciones 001 a 008 aplicadas (la 008, el 28-11-2026) |
+| API HTTP para el ESP32 | ✅ En marcha; la Cama A recibe lecturas en el servidor (28-11-2026 11:16, seq 2272) |
 | Procesador (alertas, estado, agregados, tendencia, clima) | ✅ En marcha en el servidor |
 | Página principal, camas y configuración | ✅ Inicio (presentación del proyecto) en https://huerto.mjvirtual.cl · camas en `/tablero` · kiosco en `/tablero?kiosco=1` |
 | Clima exterior de referencia (Open-Meteo) | ✅ Responde con `estado: ok` desde el servidor |
-| Tendencias y predicción (RF-15) | ⚠️ El cálculo funciona, pero la Cama A muestra «Sin datos suficientes»: la humedad está fija en 100 % por la calibración. Alerta preventiva **desactivada** (por defecto) |
+| Tendencias y predicción (RF-15) | ✅ Se calcula de nuevo desde la calibración en el servidor: la Cama A muestra «Subiendo, +0,4 pts/h, sin tendencia clara (no se está secando)», R² 0,6. Alerta preventiva **desactivada** (por defecto) |
 | Tests automáticos | ✅ 429 de 429 en verde (pytest, en el PC, 28-11-2026) |
 | Firmware del nodo | ✅ La placa envía lecturas al servidor (la Cama A en https://huerto.mjvirtual.cl; del 27-11 23:40 al 28-11 10:43 pasó de seq 896 a 2206, unas 1310 de 1326 esperadas a 30 s; llegan en unos 3 s) |
-| Calibración de la sonda | ⚠️ Calibrada (seco 3160 mV, mojado 2042 mV), pero en la cama marca entre 1458 y 1568 mV: menos que el «mojado», así que queda en el tope de 100 %. Ya no hace falta la placa: el servidor puede calcular el % desde los mV (migración 008, ver «Pendiente: desplegar la calibración»). Provisional: seco 3160, mojado 980 mV (el mínimo registrado, 27-11 17:42). **Lunes 30-11-2026:** con la tierra saturada, «Usar la lectura actual como mojado» en `/configuracion` |
+| Calibración de la sonda | ⚠️ **Provisional, en el servidor:** seco 3160 mV, mojado 980 mV (el mínimo registrado, 27-11 17:42), con el historial recalculado. 1422 mV → 79,7 %. **Lunes 30-11-2026:** con la tierra saturada, «Usar la lectura actual como mojado» en `/configuracion`. La placa (OLED y LED) sigue con `config.h` (mojado 2042 mV) y muestra 100 % |
 | Red (firewall y perfil privado del PC) | ➖ Ya no hace falta con el servidor: el ESP32 solo necesita salir a internet |
-| Correo del formulario de contacto (`PILOTO_CORREO`) | ⏳ Falta en el `.env` del servidor: la portada sale con `data-correo=""` (28-11-2026) |
+| Correo del formulario de contacto (`PILOTO_CORREO`) | ⏳ Resuelto en el código (28-11-2026): sin `PILOTO_CORREO` en el `.env`, se usa `macarena@mjamett.cl`. Falta desplegarlo: `git pull` + `docker compose up -d --build web` |
 | Prueba con la placa real y corte de WiFi | ⏳ Pendiente |
 | Evaluación del modelo (CQ-10 a CQ-13) | ⏳ Faltan semanas de lecturas reales: `tools/evaluar_tendencia.py` |
 | Rangos por zona | ⏳ Valores de ejemplo: confirmar con fichas INIA/INDAP |
 
 ## Servidor mjvirtual: en marcha
 
-**Revisión del 28-11-2026, 10:45 (desde fuera, por HTTPS):**
+**Actualización del 28-11-2026 (commit `625d4df`): calibración de la sonda en el servidor.**
+Desplegada con el orden de la guía (migración 008 antes del procesador). En `/configuracion` se
+guardó la calibración provisional de la Cama A (seco 3160, mojado 980 mV) y se recalculó el
+historial.
+
+**Verificado desde fuera (11:16):**
+- `/api/camas/cama-a/ultima`: seq 2272, 1422 mV → `suelo_pct` 79,7 % (antes, 100 %);
+- en el CSV de la Cama A solo queda 1 lectura en 100 % (la de 978 mV) y 38 en 0 % (la sonda al
+  aire antes de enterrarla, 27-11 de 17:18 a 17:40);
+- `/api/tendencias`: «Subiendo», +0,4 pts/h;
+- la ficha `/cama/1` muestra la curva entre 67 % y 80 %.
+
+**Observado en la ficha:**
+- la instalación del 27-11 en la tarde (de 0 % a 100 %) aparece como «Riego detectado», pero no
+  fue un riego;
+- la humedad sube lento durante la noche y la mañana (de 1700 a 1422 mV). En esta sonda,
+  **menos mV = más húmedo**: ¿rocío, agua que se reparte en la tierra o deriva de la sonda?
+
+**Revisión del 28-11-2026, 10:45 (antes de desplegar la calibración):**
 - `/`, `/tablero`, `/tablero?kiosco=1`, `/api/clima/actual`, `/api/tendencias` y
   `/api/camas/cama-a/ultima` responden 200; `/proyecto` responde 301 hacia `/`. El rediseño
   (`07eee89`) ya está en el servidor.
@@ -65,22 +84,6 @@ documentación)
   guardado», y ningún `ERROR`;
 - variables opcionales del `.env` del servidor: `PILOTO_CORREO` (formulario de `/proyecto`) y
   `EXPORT_TOKEN` (exportación desde scripts).
-
-### Pendiente: desplegar la calibración en el servidor (28-11-2026)
-
-Incluye la **migración 008**: seguir el orden de la sección 3 de la guía (respaldo, `git pull`,
-`build web procesador`, `up -d web`, `python -m comun.migrar`, `up -d procesador`). Después:
-
-1. Entrar a https://huerto.mjvirtual.cl/configuracion/ con el PIN.
-2. En «Calibración de la sonda de suelo de Cama A»: seco `3160`, mojado `980`, con «Aplicar también
-   a las lecturas ya guardadas» marcado → «Guardar calibración».
-3. Comprobar en `/api/camas/cama-a/ultima` que `suelo_pct` ya no es 100 (con unos 1440 mV debería
-   marcar cerca de 79 %), y que en `/tablero` la tendencia deja de decir «Sin datos suficientes»
-   después de un rato.
-
-Ojo con la lectura de los mV: en esta sonda **menos mV = más húmedo**. Del 27-11 a las 20:22 al
-28-11 a las 10:48 bajó de 1700 a 1437 mV, es decir, la sonda indica que la tierra se humedeció
-(¿riego, rocío o deriva de la sonda?).
 
 ### Preparación del servidor (27-11-2026)
 
