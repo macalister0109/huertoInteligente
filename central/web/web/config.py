@@ -73,10 +73,11 @@ class ConfigWeb:
             cookie_segura=(entorno.get("COOKIE_SEGURA", "").strip().lower()
                            in ("1", "true", "si", "sí", "yes", "on")),
             piloto_correo=entorno.get("PILOTO_CORREO", "").strip() or PILOTO_CORREO_POR_DEFECTO,
+            # Se aceptan también los nombres en inglés (SMTP_PORT, SMTP_USER, …)
             smtp_host=entorno.get("SMTP_HOST", "").strip(),
-            smtp_puerto=int(entorno.get("SMTP_PUERTO") or 465),
-            smtp_usuario=entorno.get("SMTP_USUARIO", "").strip(),
-            smtp_clave=entorno.get("SMTP_CLAVE", ""),
-            smtp_remitente=entorno.get("SMTP_REMITENTE", "").strip(),
+            smtp_puerto=int((entorno.get("SMTP_PUERTO") or entorno.get("SMTP_PORT") or "465").strip()),
+            smtp_usuario=(entorno.get("SMTP_USUARIO") or entorno.get("SMTP_USER") or "").strip(),
+            smtp_clave=entorno.get("SMTP_CLAVE") or entorno.get("SMTP_PASSWORD") or "",
+            smtp_remitente=(entorno.get("SMTP_REMITENTE") or entorno.get("SMTP_FROM") or "").strip(),
             export_token=(lambda t: t if len(t) >= 16 else "")(entorno.get("EXPORT_TOKEN", "").strip()),
         )

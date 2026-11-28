@@ -141,6 +141,12 @@ def test_smtp_desde_el_env():
     assert ConfigWeb.desde_entorno({}).smtp_puerto == 465
 
 
+def test_smtp_con_nombres_en_ingles():
+    cfg = ConfigWeb.desde_entorno({"SMTP_HOST": "mail.mjamett.cl", "SMTP_PORT": "465",
+                                   "SMTP_USER": "contacto@mjamett.cl", "SMTP_PASSWORD": "x"})
+    assert cfg.smtp_configurado and cfg.smtp_usuario == "contacto@mjamett.cl" and cfg.smtp_puerto == 465
+
+
 class SmtpFalso:
     instancias: list = []
 
