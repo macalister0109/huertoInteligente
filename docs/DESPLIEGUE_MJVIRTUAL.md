@@ -166,11 +166,48 @@ Comprueba en https://huerto.mjvirtual.cl/api/camas/cama-a/ultima que llegó la l
 
 ## 3. Mantenimiento
 
-**Actualizar después de un cambio en GitHub:**
+**Actualizar después de un cambio en GitHub.** Hay que migrar la BD **antes** de que el procesador
+arranque con el código nuevo: si el código nuevo usa tablas que aún no existen, el procesador falla
+hasta que se migra. Mientras tanto, el ESP32 guarda las lecturas en su buffer y las reenvía
+después, así que no se pierden.
 
 ```bash
 cd ~/huertoInteligente && git pull
-cd central && docker compose up -d --build && docker compose exec web python -m comun.migrar
+cd central
+free -h                                              # revisar memoria antes de compilar
+docker compose build web procesador
+docker compose exec mariadb sh -c 'mariadb-dump -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE"' \
+  | gzip > ~/respaldos/huerto-antes-de-migrar-$(date +%F-%H%M).sql.gz   # respaldo antes de migrar
+docker compose up -d web                             # la web trae las migraciones (db/migraciones)
+docker compose exec web python -m comun.migrar       # aplica las que falten
+docker compose up -d procesador                      # recién ahora el procesador nuevo
+docker compose ps
+docker compose logs --tail 30 procesador             # sin errores; «Procesador listo.»
+```
+
+Si una migración da problemas, se revierte con
+`docker compose exec web python -m comun.migrar --revertir NNN_nombre.sql`. Revertir **nunca**
+toca las lecturas.
+
+**Variables opcionales del `.env`** (sin ellas, todo funciona con los valores por defecto):
+
+| Variable | Para qué |
+| --- | --- |
+| `PILOTO_CORREO` | Correo que recibe el formulario «Sumarse al piloto» de `/proyecto`. Sin ella, la página avisa que falta. |
+| `EXPORT_TOKEN` | Token (16 caracteres o más) para exportar datos desde scripts o notebooks. Sin él, solo se exporta con el PIN. |
+| `CLIMA_LAT`, `CLIMA_LON` | Ubicación del clima de referencia (por defecto, La Pintana). También se cambia en `/configuracion`. |
+| `DMC_USER_EMAIL`, `DMC_API_TOKEN`, `OPENWEATHER_API_KEY` | Solo si se usa la DMC u OpenWeatherMap en vez de Open-Meteo. |
+
+Después de editar el `.env`: `docker compose up -d` (recrea los servicios con las variables nuevas).
+
+**Página pública del proyecto con el tablero protegido.** Si activas el usuario y la clave de nginx
+(bloque opcional de `despliegue/nginx-huerto.mjvirtual.cl.conf`) y quieres que `/proyecto` siga
+abierta para la comunidad, exime también esa página y sus archivos:
+
+```nginx
+location = /proyecto { auth_basic off; proxy_pass http://127.0.0.1:18020; proxy_set_header Host $host;
+                       proxy_set_header X-Forwarded-For $remote_addr; proxy_set_header X-Forwarded-Proto $scheme; }
+location /static/    { auth_basic off; proxy_pass http://127.0.0.1:18020; proxy_set_header Host $host; }
 ```
 
 **Ver qué pasa:**
